@@ -30,8 +30,8 @@ import EmployeeLogin from "./pages/EmployeeLogin";
 import Orders from "./pages/Orders";
 import AllOrders from "./pages/AllOrders"
 import ReviewSection from "./pages/Reviews";
-
-
+import DeliveryManagerLogin from "./pages/delivary/DeliveryManagerLogin";
+import DeliveryManagerDashboard from "./pages/delivary/DeliveryManagerDashboard";
 
 const RedirectAuthenticatedUser = ({children})=>{
   const {isAuthenticated, user} = useAuthStore();
@@ -53,8 +53,8 @@ function App() {
   console.log("user", user)
 
   const location = useLocation();
-  const noFooterRoutes = ['/customerlogin', '/login', '/customerregister', '/customerdashboard', '/employeelogin', '/admindashboard'];
-  const noHeaderRoutes = ['/employeelogin', '/admindashboard'];
+  const noFooterRoutes = ['/customerlogin', '/login', '/customerregister', '/customerdashboard', '/employeelogin', '/admindashboard', '/delivery-login'];
+  const noHeaderRoutes = ['/employeelogin', '/admindashboard', '/delivery-login'];
 
   return (
     <>
@@ -65,6 +65,8 @@ function App() {
         <Route path="/" element={<Home />}/>
         <Route path="/customerlogin" element={<CustomerLoginPage />}/>
         <Route path="/customerdashboard" element={<CustomerDashboard />}/>
+        <Route path="/delivery-login" element={<DeliveryManagerLogin />}/>
+        <Route path="/delivery-dashboard" element={<DeliveryManagerDashboard />}/>
 
         <Route path="/customerregister" element={
           <RedirectAuthenticatedUser>

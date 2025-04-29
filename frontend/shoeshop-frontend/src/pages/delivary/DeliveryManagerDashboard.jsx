@@ -1,0 +1,383 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  FiPackage, 
+  FiTruck, 
+  FiMap, 
+  FiCalendar, 
+  FiUsers, 
+  FiClipboard, 
+  FiRefreshCw, 
+  FiCheck, 
+  FiX, 
+  FiAlertCircle 
+} from "react-icons/fi";
+import axios from "axios";
+import { toast } from "react-toastify";
+import DeliveryManagerLogin from "./DeliveryManagerLogin";
+
+const DeliveryManagerDashboard = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('pending');
+  const [orders, setOrders] = useState([]);
+  const [deliveryStats, setDeliveryStats] = useState({
+    pendingDeliveries: 0,
+    inTransit: 0,
+    completed: 0,
+    cancelled: 0,
+    totalDrivers: 0,
+  });
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('deliveryManagerToken');
+    if (!token) {
+      navigate('/delivery-login');
+      return;
+    }
+    fetchOrders();
+  }, [navigate]);
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('deliveryManagerToken');
+      const response = await axios.get('http://localhost:5000/api/delivery-manager/orders', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setOrders(response.data.orders || []);
+      setDeliveryStats(response.data.stats || {
+        pendingDeliveries: 0,
+        inTransit: 0,
+        completed: 0,
+        cancelled: 0,
+        totalDrivers: 0,
+      });
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast.error(error.response?.data?.message || 'Failed to fetch orders');
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      await axios.put(
+        `http://localhost:5000/api/delivery-manager/orders/${orderId}/status`,
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success(`Order status updated to ${newStatus}`);
+      setShowStatusModal(false);
+      fetchOrders();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  const filteredOrders = activeTab === 'all' 
+    ? orders 
+    : orders.filter(order => order.status === activeTab);
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('deliveryManagerToken');
+    navigate('/delivery-login');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Delivery Management</h1>
+            <p className="mt-2 text-gray-600">Manage orders and delivery status</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={fetchOrders}
+              className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+            >
+              <FiRefreshCw className="text-lg" />
+              Refresh Data
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                <FiPackage size={24} />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Pending</p>
+                <p className="text-2xl font-semibold text-gray-900">{deliveryStats.pendingDeliveries}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                <FiTruck size={24} />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">In Transit</p>
+                <p className="text-2xl font-semibold text-gray-900">{deliveryStats.inTransit}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100 text-green-600">
+                <FiCheck size={24} />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Completed</p>
+                <p className="text-2xl font-semibold text-gray-900">{deliveryStats.completed}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-red-100 text-red-600">
+                <FiX size={24} />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Cancelled</p>
+                <p className="text-2xl font-semibold text-gray-900">{deliveryStats.cancelled}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                <FiUsers size={24} />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Total Orders</p>
+                <p className="text-2xl font-semibold text-gray-900">{orders.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Order Status Tabs */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex space-x-4 mb-6">
+            {['all', 'pending', 'processing', 'delivered', 'cancelled'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-lg ${
+                  activeTab === tab
+                    ? 'bg-yellow-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Orders Table */}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredOrders.map((order) => (
+                  <tr key={order._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order._id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {order.customerName}<br/>
+                      <span className="text-gray-500">{order.customerEmail}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{order.shippingAddress}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      Rs.{order.totalPrice.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowStatusModal(true);
+                          }}
+                          className="text-yellow-600 hover:text-yellow-900"
+                          title="Update Status"
+                        >
+                          <FiRefreshCw className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowDetailsModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="View Details"
+                        >
+                          <FiClipboard className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Order Details Modal */}
+      {showDetailsModal && selectedOrder && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full">
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-xl font-bold">Order Details</h2>
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <p className="font-semibold">Order Information</p>
+                <p>Order ID: {selectedOrder._id}</p>
+                <p>Status: <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(selectedOrder.status)}`}>
+                  {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                </span></p>
+                <p>Total: Rs.{selectedOrder.totalPrice.toFixed(2)}</p>
+                <p>Payment Method: {selectedOrder.paymentMethod}</p>
+              </div>
+              <div>
+                <p className="font-semibold">Customer Information</p>
+                <p>Name: {selectedOrder.customerName}</p>
+                <p>Email: {selectedOrder.customerEmail}</p>
+                <p>Shipping Address: {selectedOrder.shippingAddress}</p>
+              </div>
+            </div>
+            <div>
+              <p className="font-semibold mb-2">Order Items</p>
+              <div className="space-y-2">
+                {selectedOrder.items.map((item, index) => (
+                  <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span>{item.product.name} x {item.quantity}</span>
+                    <span>Rs.{(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Update Modal */}
+      {showStatusModal && selectedOrder && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Update Order Status</h2>
+            <div className="mb-4">
+              <p><strong>Order ID:</strong> {selectedOrder._id}</p>
+              <p><strong>Customer:</strong> {selectedOrder.customerName}</p>
+              <p><strong>Current Status:</strong> {selectedOrder.status}</p>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => handleStatusChange(selectedOrder._id, 'pending')}
+                className="w-full bg-yellow-100 text-yellow-800 py-2 px-4 rounded hover:bg-yellow-200"
+              >
+                Mark as Pending
+              </button>
+              <button
+                onClick={() => handleStatusChange(selectedOrder._id, 'processing')}
+                className="w-full bg-blue-100 text-blue-800 py-2 px-4 rounded hover:bg-blue-200"
+              >
+                Mark as Processing
+              </button>
+              <button
+                onClick={() => handleStatusChange(selectedOrder._id, 'delivered')}
+                className="w-full bg-green-100 text-green-800 py-2 px-4 rounded hover:bg-green-200"
+              >
+                Mark as Delivered
+              </button>
+              <button
+                onClick={() => handleStatusChange(selectedOrder._id, 'cancelled')}
+                className="w-full bg-red-100 text-red-800 py-2 px-4 rounded hover:bg-red-200"
+              >
+                Mark as Cancelled
+              </button>
+              <button
+                onClick={() => setShowStatusModal(false)}
+                className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 mt-4"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default DeliveryManagerDashboard; 
