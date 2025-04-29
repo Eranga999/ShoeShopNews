@@ -7,6 +7,7 @@ import cartRoute from "./routes/cartRoute.js";
 import reviewRoute from "./routes/reviewRoute.js";
 // import customizeShoeRoute from "./routes/customizeshoueRoute.js";
 // import userRouter from "./routes/userRouter.js"
+import OrderRoute from "./Route/orderManagerRoute2.js";
 import dotenv from "dotenv"
 import cors from "cors"
 import cookieParser from "cookie-parser";
@@ -53,6 +54,8 @@ app.use("/api/attendance", AttendanceRoutes);
 app.use("/api/leaves", LeaveRoutes);
 app.use("/api/employees",EmployeeRoutes);
 
+
+app.use("/api/orders", OrderRoute);
 
 app.listen(PORT,()=>{
     connectDB()
