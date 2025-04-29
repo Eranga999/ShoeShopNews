@@ -7,14 +7,14 @@ import cartRoute from "./routes/cartRoute.js";
 import reviewRoute from "./routes/reviewRoute.js";
 // import customizeShoeRoute from "./routes/customizeshoueRoute.js";
 // import userRouter from "./routes/userRouter.js"
-import OrderRoute from "./Route/orderManagerRoute2.js";
+import OrderRoute from "./routes/orderManagerRoute2.js";
 import dotenv from "dotenv"
 import cors from "cors"
 import cookieParser from "cookie-parser";
 import { connectDB } from "./DB/connectDB.js";
 import router from "./routes/authRouter.js";
-import productRouter from "../backend/routes/productRouter.js";
-import orderRoute from "../backend/routes/orderManageRoute.js"
+import productRouter from "./routes/productRouter.js";
+import orderRoute from "./routes/orderManageRoute.js"
 import md5 from "md5";
 import userRouter from "./routes/employeeRoute.js";
 import AttendanceRoutes from "./routes/AttendanceRoutes.js";
