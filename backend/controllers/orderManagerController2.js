@@ -1,6 +1,6 @@
-//import Cart from "../Models/cart.js";
-import Orders from "../Models/order2.js";
-import Shoes from "../Models/shoe2.js";
+//import Cart from "../modeles/cart.js";
+import Orders from "../modeles/order2.js";
+import Shoes from "../modeles/shoe.js";
 
 export async function addOrders(req, res) {
   const data = req.body;

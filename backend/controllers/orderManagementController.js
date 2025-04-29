@@ -1,5 +1,5 @@
 import Cart from "../modeles/cart.js";
-import Orders from "../modeles/order.js";
+import Orders from "../modeles/order2.js";
 import Shoes from "../modeles/shoe.js"
 
 export async function addOrders(req, res) {

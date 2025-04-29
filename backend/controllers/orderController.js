@@ -1,8 +1,8 @@
-import Order from "../Models/orderModel.js";
+import Orders from "../modeles/order2.js";
 import productModel from "../Models/productModel.js";
 export const getOrders = async (req, res) => {
     try {
-        const orders = await Order.find()
+        const orders = await Orders.find()
             .populate("products.product", "name price description");
         res.json(orders);
     } catch (error) {
@@ -12,7 +12,7 @@ export const getOrders = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
     try {
         const { status } = req.body;
-        const order = await Order.findById(req.params.id);
+        const order = await Orders.findById(req.params.id);
         if (!order) return res.status(404).json({ message: "Order not found" });
         order.status = status;
         await order.save();
@@ -63,7 +63,7 @@ export const addOrder = async (req, res) => {
         }
 
         // Create new order
-        const newOrder = await Order.create({ 
+        const newOrder = await Orders.create({ 
             customerName, 
             products: products.map(p => ({
                 product: p.productId,
