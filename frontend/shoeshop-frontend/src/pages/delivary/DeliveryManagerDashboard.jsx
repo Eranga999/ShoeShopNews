@@ -10,7 +10,8 @@ import {
   FiRefreshCw, 
   FiCheck, 
   FiX, 
-  FiAlertCircle 
+  FiAlertCircle,
+  FiUserPlus
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -21,6 +22,7 @@ const DeliveryManagerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pending');
   const [orders, setOrders] = useState([]);
+  const [deliveryPersons, setDeliveryPersons] = useState([]);
   const [deliveryStats, setDeliveryStats] = useState({
     pendingDeliveries: 0,
     inTransit: 0,
@@ -31,6 +33,15 @@ const DeliveryManagerDashboard = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showAddDeliveryPersonModal, setShowAddDeliveryPersonModal] = useState(false);
+  const [newDeliveryPerson, setNewDeliveryPerson] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    vehicleNumber: '',
+    licenseNumber: ''
+  });
 
   useEffect(() => {
     const token = localStorage.getItem('deliveryManagerToken');
@@ -39,28 +50,69 @@ const DeliveryManagerDashboard = () => {
       return;
     }
     fetchOrders();
+    fetchDeliveryPersons();
   }, [navigate]);
+
+  const fetchDeliveryPersons = async () => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      const response = await axios.get('http://localhost:5000/api/delivery/delivery-persons', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDeliveryPersons(response.data.deliveryPersons || []);
+    } catch (error) {
+      console.error('Error fetching delivery persons:', error);
+      toast.error('Failed to fetch delivery persons. Please check your connection.');
+    }
+  };
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('deliveryManagerToken');
-      const response = await axios.get('http://localhost:5000/api/delivery-manager/orders', {
+      const response = await axios.get('http://localhost:5000/api/orders/all', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setOrders(response.data.orders || []);
-      setDeliveryStats(response.data.stats || {
-        pendingDeliveries: 0,
-        inTransit: 0,
-        completed: 0,
+      console.log('Raw orders data:', response.data);
+
+      // Transform the orders data to match the frontend structure
+      const transformedOrders = Array.isArray(response.data) ? response.data.map(order => ({
+        _id: order._id,
+        customerName: `${order.firstName} ${order.lastName}`,
+        customerEmail: order.email,
+        shippingAddress: order.shippingAddress,
+        status: order.deliveryStatus || 'processing',
+        totalPrice: order.totalAmount,
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        items: order.items.map(item => ({
+          product: {
+            name: `${item.BrandName} ${item.ModelName}`,
+          },
+          quantity: item.quantity,
+          imageUrl: item.imageUrl || null, // Handle empty image URLs
+          price: item.totalAmount || 0,
+        })),
+      })) : [];
+
+      console.log('Transformed orders:', transformedOrders);
+      setOrders(transformedOrders);
+      
+      // Calculate delivery stats
+      const stats = {
+        pendingDeliveries: transformedOrders.filter(order => order.status === 'processing').length,
+        inTransit: transformedOrders.filter(order => order.status === 'pickedup').length,
+        completed: transformedOrders.filter(order => order.status === 'delivered').length,
         cancelled: 0,
-        totalDrivers: 0,
-      });
+        totalDrivers: deliveryPersons.length,
+      };
+      
+      setDeliveryStats(stats);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching orders:', error);
-      toast.error(error.response?.data?.message || 'Failed to fetch orders');
+      toast.error('Failed to fetch orders. Please check your connection.');
       setLoading(false);
     }
   };
@@ -69,8 +121,8 @@ const DeliveryManagerDashboard = () => {
     try {
       const token = localStorage.getItem('deliveryManagerToken');
       await axios.put(
-        `http://localhost:5000/api/delivery-manager/orders/${orderId}/status`,
-        { status: newStatus },
+        `http://localhost:5000/api/orders/${orderId}`,
+        { deliveryStatus: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -79,21 +131,81 @@ const DeliveryManagerDashboard = () => {
       fetchOrders();
     } catch (error) {
       console.error('Error updating order status:', error);
-      toast.error(error.response?.data?.message || 'Failed to update status');
+      toast.error('Failed to update status. Please try again.');
+    }
+  };
+
+  const handleAssignDeliveryPerson = async (orderId, deliveryPersonId) => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      await axios.put(
+        `http://localhost:5000/api/delivery/orders/${orderId}/assign`,
+        { deliveryPersonId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success('Delivery person assigned successfully');
+      setShowAssignModal(false);
+      fetchOrders();
+    } catch (error) {
+      console.error('Error assigning delivery person:', error);
+      toast.error('Failed to assign delivery person. Please try again.');
+    }
+  };
+
+  const handleAddDeliveryPerson = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      await axios.post(
+        'http://localhost:5000/api/delivery/delivery-persons',
+        newDeliveryPerson,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success('Delivery person added successfully');
+      setShowAddDeliveryPersonModal(false);
+      setNewDeliveryPerson({
+        name: '',
+        email: '',
+        phone: '',
+        vehicleNumber: '',
+        licenseNumber: ''
+      });
+      fetchDeliveryPersons();
+    } catch (error) {
+      console.error('Error adding delivery person:', error);
+      toast.error('Failed to add delivery person. Please try again.');
     }
   };
 
   const filteredOrders = activeTab === 'all' 
     ? orders 
-    : orders.filter(order => order.status === activeTab);
+    : orders.filter(order => {
+        switch(activeTab) {
+          case 'processing':
+            return order.deliveryStatus === 'processing' || !order.deliveryStatus;
+          case 'pickedup':
+            return order.deliveryStatus === 'pickedup';
+          case 'delivered':
+            return order.deliveryStatus === 'delivered';
+          default:
+            return true;
+        }
+      });
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'processing':
+      case undefined:
+      case null:
+        return 'bg-yellow-100 text-yellow-800';
+      case 'pickedup':
+        return 'bg-blue-100 text-blue-800';
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -119,6 +231,13 @@ const DeliveryManagerDashboard = () => {
             <p className="mt-2 text-gray-600">Manage orders and delivery status</p>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowAddDeliveryPersonModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <FiUserPlus className="text-lg" />
+              Add Delivery Person
+            </button>
             <button
               onClick={fetchOrders}
               className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
@@ -201,7 +320,7 @@ const DeliveryManagerDashboard = () => {
         {/* Order Status Tabs */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="flex space-x-4 mb-6">
-            {['all', 'pending', 'processing', 'delivered', 'cancelled'].map((tab) => (
+            {['all', 'processing', 'pickedup', 'delivered'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -225,6 +344,7 @@ const DeliveryManagerDashboard = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Person</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -239,9 +359,23 @@ const DeliveryManagerDashboard = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">{order.shippingAddress}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.deliveryStatus)}`}>
+                        {(order.deliveryStatus || 'processing').charAt(0).toUpperCase() + (order.deliveryStatus || 'processing').slice(1)}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <select 
+                        value={order.deliveryPerson?._id || ''}
+                        onChange={(e) => handleAssignDeliveryPerson(order._id, e.target.value)}
+                        className="block w-full p-2 rounded-md border-gray-300 text-gray-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                      >
+                        <option value="">Select Delivery Person</option>
+                        {deliveryPersons.map((person) => (
+                          <option key={person._id} value={person._id}>
+                            {person.name}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       Rs.{order.totalPrice.toFixed(2)}
@@ -295,8 +429,8 @@ const DeliveryManagerDashboard = () => {
               <div>
                 <p className="font-semibold">Order Information</p>
                 <p>Order ID: {selectedOrder._id}</p>
-                <p>Status: <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(selectedOrder.status)}`}>
-                  {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                <p>Status: <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(selectedOrder.deliveryStatus)}`}>
+                  {(selectedOrder.deliveryStatus || 'processing').charAt(0).toUpperCase() + (selectedOrder.deliveryStatus || 'processing').slice(1)}
                 </span></p>
                 <p>Total: Rs.{selectedOrder.totalPrice.toFixed(2)}</p>
                 <p>Payment Method: {selectedOrder.paymentMethod}</p>
@@ -339,20 +473,20 @@ const DeliveryManagerDashboard = () => {
             <div className="mb-4">
               <p><strong>Order ID:</strong> {selectedOrder._id}</p>
               <p><strong>Customer:</strong> {selectedOrder.customerName}</p>
-              <p><strong>Current Status:</strong> {selectedOrder.status}</p>
+              <p><strong>Current Status:</strong> {(selectedOrder.deliveryStatus || 'processing').charAt(0).toUpperCase() + (selectedOrder.deliveryStatus || 'processing').slice(1)}</p>
             </div>
             <div className="space-y-3">
               <button
-                onClick={() => handleStatusChange(selectedOrder._id, 'pending')}
+                onClick={() => handleStatusChange(selectedOrder._id, 'processing')}
                 className="w-full bg-yellow-100 text-yellow-800 py-2 px-4 rounded hover:bg-yellow-200"
               >
-                Mark as Pending
+                Mark as Processing
               </button>
               <button
-                onClick={() => handleStatusChange(selectedOrder._id, 'processing')}
+                onClick={() => handleStatusChange(selectedOrder._id, 'pickedup')}
                 className="w-full bg-blue-100 text-blue-800 py-2 px-4 rounded hover:bg-blue-200"
               >
-                Mark as Processing
+                Mark as Picked Up
               </button>
               <button
                 onClick={() => handleStatusChange(selectedOrder._id, 'delivered')}
@@ -373,6 +507,90 @@ const DeliveryManagerDashboard = () => {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Delivery Person Modal */}
+      {showAddDeliveryPersonModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-xl font-bold">Add New Delivery Person</h2>
+              <button
+                onClick={() => setShowAddDeliveryPersonModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleAddDeliveryPerson} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <input
+                  type="text"
+                  value={newDeliveryPerson.name}
+                  onChange={(e) => setNewDeliveryPerson({...newDeliveryPerson, name: e.target.value})}
+                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  value={newDeliveryPerson.email}
+                  onChange={(e) => setNewDeliveryPerson({...newDeliveryPerson, email: e.target.value})}
+                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Phone</label>
+                <input
+                  type="tel"
+                  value={newDeliveryPerson.phone}
+                  onChange={(e) => setNewDeliveryPerson({...newDeliveryPerson, phone: e.target.value})}
+                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Vehicle Number</label>
+                <input
+                  type="text"
+                  value={newDeliveryPerson.vehicleNumber}
+                  onChange={(e) => setNewDeliveryPerson({...newDeliveryPerson, vehicleNumber: e.target.value})}
+                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">License Number</label>
+                <input
+                  type="text"
+                  value={newDeliveryPerson.licenseNumber}
+                  onChange={(e) => setNewDeliveryPerson({...newDeliveryPerson, licenseNumber: e.target.value})}
+                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
+                  required
+                />
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAddDeliveryPersonModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Add Delivery Person
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
