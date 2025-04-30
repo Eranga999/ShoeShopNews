@@ -3,42 +3,59 @@ import mongoose from 'mongoose';
 const deliveryPersonSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Name is required'],
-    trim: true,
-    minlength: [3, 'Name must be at least 3 characters long'],
-    validate: {
-      validator: function(v) {
-        return /^[A-Za-z\s]{3,}$/.test(v);
-      },
-      message: 'Name must contain only letters'
-    }
+    required: [true, 'Name is required']
   },
-  nic: {
+  email: {
     type: String,
-    required: [true, 'NIC is required'],
+    required: [true, 'Email is required'],
     unique: true,
-    validate: {
-      validator: function(v) {
-        return /^\d{12}$/.test(v);
-      },
-      message: 'NIC must be exactly 12 digits'
-    }
+    lowercase: true,
+    trim: true
   },
-  totalTrips: {
-    type: Number,
-    required: [true, 'Total trips is required'],
-    min: [0, 'Total trips must be positive']
+  password: {
+    type: String,
+    required: [true, 'Password is required']
   },
-  mileage: {
-    type: Number,
-    required: [true, 'Mileage is required'],
-    min: [0, 'Mileage must be positive']
+  phone: {
+    type: String,
+    required: [true, 'Phone number is required']
   },
-  deliveryCost: {
-    type: Number,
-    required: [true, 'Delivery cost is required'],
-    min: [0, 'Delivery cost must be positive']
+  vehicleNumber: {
+    type: String,
+    required: [true, 'Vehicle number is required']
+  },
+  licenseNumber: {
+    type: String,
+    required: [true, 'License number is required']
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
-}, { timestamps: true });
+}, {
+  timestamps: true
+});
 
-export default mongoose.model('DeliveryPerson', deliveryPersonSchema);
+deliveryPersonSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+deliveryPersonSchema.methods.toJSON = function() {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
+};
+
+deliveryPersonSchema.index({ email: 1 }, { unique: true });
+
+export const DeliveryPerson = mongoose.models.DeliveryPerson || mongoose.model('DeliveryPerson', deliveryPersonSchema); 

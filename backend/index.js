@@ -20,6 +20,8 @@ import userRouter from "./routes/employeeRoute.js";
 import AttendanceRoutes from "./routes/AttendanceRoutes.js";
 import LeaveRoutes from "./routes/LeaveRoutes.js";
 import EmployeeRoutes from "./routes/EmployeeRoutes.js";
+import deliveryManagerRoute from "./routes/deliveryManagerRoute.js";
+import deliveryRoutes from "./routes/deliveryRoutes.js";
 
 // import router from "./routes/authRouter.js";
 
@@ -38,15 +40,17 @@ app.use(function(req, res, next) {
   next();
 });
 
- app.use("/api/auth/", router)
+app.use("/api/auth/", router)
 // app.use("/api/users", userRouter)
- app.use("/api/product", productRouter);
- app.use("/api/cart", cartRoute);
+app.use("/api/product", productRouter);
+app.use("/api/cart", cartRoute);
 // app.use("/api/wishlist", wishlistRoute);
 app.use("/api/review", reviewRoute);
 app.use("/api/order", orderRoute);
 // app.use("/api/customize", customizeShoeRoute);
 app.use("/api/users", userRouter);
+app.use("/api/delivery-manager", deliveryManagerRoute);
+app.use("/api/delivery", deliveryRoutes);
 // app.use("/payment", paymentRoutes);
 
 app.use("/api/attendance", AttendanceRoutes);
