@@ -51,6 +51,26 @@ const orderSchema = new mongoose.Schema({
     name: String,
     email: String,
     phone: String
+  },
+  deliveryDetails: {
+    deliveryCost: {
+      type: Number,
+      min: 0
+    },
+    mileage: {
+      type: Number,
+      min: 0
+    },
+    petrolCost: {
+      type: Number,
+      min: 0
+    },
+    timeSpent: {
+      type: Number,
+      min: 0
+    },
+    additionalNotes: String,
+    submittedAt: Date
   }
 }, {
   timestamps: true

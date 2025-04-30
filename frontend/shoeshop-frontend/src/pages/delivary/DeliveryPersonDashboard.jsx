@@ -18,6 +18,7 @@ import {
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
+import DeliveryDetailsForm from './DeliveryDetailsForm';
 
 const DeliveryPersonDashboard = () => {
     const navigate = useNavigate();
@@ -33,6 +34,8 @@ const DeliveryPersonDashboard = () => {
     });
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showOrderDetails, setShowOrderDetails] = useState(false);
+    const [showDeliveryForm, setShowDeliveryForm] = useState(false);
+    const [selectedOrderForDetails, setSelectedOrderForDetails] = useState(null);
 
     useEffect(() => {
         const token = localStorage.getItem('deliveryPersonToken');
@@ -168,6 +171,10 @@ const DeliveryPersonDashboard = () => {
     const handleLogout = () => {
         localStorage.removeItem('deliveryPersonToken');
         navigate('/delivery-person-login');
+    };
+
+    const handleDeliveryDetailsSubmit = async (details) => {
+        await fetchAssignedOrders(); // Refresh orders after submission
     };
 
     const OrderDetailsModal = () => (
@@ -450,9 +457,19 @@ const DeliveryPersonDashboard = () => {
                                                             setShowOrderDetails(true);
                                                         }}
                                                         className="text-blue-600 hover:text-blue-900"
-                                                        title="View Details"
+                                                        title="View Order Details"
                                                     >
                                                         <FiAlertCircle className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedOrderForDetails(order);
+                                                            setShowDeliveryForm(true);
+                                                        }}
+                                                        className="text-green-600 hover:text-green-900"
+                                                        title="Submit Delivery Details"
+                                                    >
+                                                        <FiTruck className="w-5 h-5" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -467,6 +484,22 @@ const DeliveryPersonDashboard = () => {
 
             {/* Order Details Modal */}
             {showOrderDetails && <OrderDetailsModal />}
+
+            {/* Delivery Details Form Modal */}
+            {showDeliveryForm && selectedOrderForDetails && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+                    <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full m-4">
+                        <DeliveryDetailsForm
+                            orderId={selectedOrderForDetails._id}
+                            onSubmit={handleDeliveryDetailsSubmit}
+                            onClose={() => {
+                                setShowDeliveryForm(false);
+                                setSelectedOrderForDetails(null);
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

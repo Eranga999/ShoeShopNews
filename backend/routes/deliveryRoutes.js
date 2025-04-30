@@ -70,6 +70,53 @@ router.get('/delivery-person/orders', deliveryPersonAuth, async (req, res) => {
   }
 });
 
+// Add delivery details endpoint
+router.post('/delivery-person/orders/:orderId/details', deliveryPersonAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { deliveryCost, mileage, petrolCost, timeSpent, additionalNotes } = req.body;
+    const deliveryPersonId = new mongoose.Types.ObjectId(req.user.id);
+
+    // Verify the order belongs to this delivery person
+    const order = await Order.findOne({
+      _id: orderId,
+      'deliveryPerson._id': deliveryPersonId
+    });
+
+    if (!order) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Order not found or not assigned to you' 
+      });
+    }
+
+    // Add delivery details to the order
+    order.deliveryDetails = {
+      deliveryCost: Number(deliveryCost),
+      mileage: Number(mileage),
+      petrolCost: Number(petrolCost),
+      timeSpent: Number(timeSpent),
+      additionalNotes,
+      submittedAt: new Date()
+    };
+
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Delivery details submitted successfully',
+      details: order.deliveryDetails
+    });
+  } catch (error) {
+    console.error('Error submitting delivery details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit delivery details',
+      error: error.message
+    });
+  }
+});
+
 // Protected delivery manager routes
 router.use('/manager', authMiddleware);
 router.get('/manager/delivery-persons', getDeliveryPersons);

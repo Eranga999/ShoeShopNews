@@ -14,7 +14,9 @@ import {
   FiUserPlus,
   FiPhone,
   FiMail,
-  FiCreditCard
+  FiCreditCard,
+  FiDollarSign,
+  FiInfo
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -47,6 +49,8 @@ const DeliveryManagerDashboard = () => {
     licenseNumber: '',
     password: ''
   });
+  const [showDeliveryDetails, setShowDeliveryDetails] = useState(false);
+  const [selectedDeliveryDetails, setSelectedDeliveryDetails] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('deliveryManagerToken');
@@ -462,6 +466,86 @@ const DeliveryManagerDashboard = () => {
     </div>
   );
 
+  // Add this function to fetch delivery details
+  const fetchDeliveryDetails = async (orderId) => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      const response = await axios.get(
+        `http://localhost:5000/api/delivery/manager/orders/${orderId}/details`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        setSelectedDeliveryDetails(response.data.details);
+        setShowDeliveryDetails(true);
+      }
+    } catch (error) {
+      console.error('Error fetching delivery details:', error);
+      toast.error('Failed to fetch delivery details');
+    }
+  };
+
+  // Add the DeliveryDetailsModal component
+  const DeliveryDetailsModal = () => (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+      <div className="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full">
+        <div className="flex justify-between items-start mb-6">
+          <h2 className="text-2xl font-bold">Delivery Details</h2>
+          <button
+            onClick={() => setShowDeliveryDetails(false)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+        </div>
+        {selectedDeliveryDetails ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="flex items-center gap-3">
+                <FiDollarSign className="text-blue-500" />
+                <div>
+                  <p className="text-sm text-gray-500">Delivery Cost</p>
+                  <p className="font-medium">Rs. {selectedDeliveryDetails.deliveryCost}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <FiTruck className="text-blue-500" />
+                <div>
+                  <p className="text-sm text-gray-500">Mileage</p>
+                  <p className="font-medium">{selectedDeliveryDetails.mileage} km</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <FiDroplet className="text-blue-500" />
+                <div>
+                  <p className="text-sm text-gray-500">Petrol Cost</p>
+                  <p className="font-medium">Rs. {selectedDeliveryDetails.petrolCost}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <FiClock className="text-blue-500" />
+                <div>
+                  <p className="text-sm text-gray-500">Time Spent</p>
+                  <p className="font-medium">{selectedDeliveryDetails.timeSpent} hours</p>
+                </div>
+              </div>
+            </div>
+            {selectedDeliveryDetails.additionalNotes && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-500">Additional Notes</p>
+                <p className="mt-1 text-gray-700">{selectedDeliveryDetails.additionalNotes}</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-gray-500">No delivery details available</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex justify-center items-center">
@@ -658,9 +742,16 @@ const DeliveryManagerDashboard = () => {
                             setShowDetailsModal(true);
                           }}
                           className="text-blue-600 hover:text-blue-900"
-                          title="View Details"
+                          title="View Order Details"
                         >
                           <FiClipboard className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => fetchDeliveryDetails(order._id)}
+                          className="text-green-600 hover:text-green-900"
+                          title="View Delivery Details"
+                        >
+                          <FiInfo className="w-5 h-5" />
                         </button>
                       </div>
                     </td>
@@ -871,6 +962,9 @@ const DeliveryManagerDashboard = () => {
 
       {/* Delivery Persons Modal */}
       {showDeliveryPersonsModal && <DeliveryPersonsModal />}
+
+      {/* Add the delivery details modal */}
+      {showDeliveryDetails && <DeliveryDetailsModal />}
     </div>
   );
 };
