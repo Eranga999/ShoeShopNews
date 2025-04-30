@@ -138,43 +138,51 @@ export const assignDeliveryPerson = async (req, res) => {
       name: deliveryPerson.name
     });
 
-    // Update order with delivery person details using findByIdAndUpdate
-    const updatedOrder = await Order.findByIdAndUpdate(
-      orderId,
-      {
-        $set: {
-          deliveryPerson: {
-            _id: deliveryPerson._id,
-            name: deliveryPerson.name,
-            email: deliveryPerson.email,
-            phone: deliveryPerson.phone
-          },
-          deliveryStatus: 'processing'
-        }
-      },
-      { 
-        new: true, // Return the updated document
-        runValidators: false // Disable validation for this update
-      }
-    );
-
-    if (!updatedOrder) {
+    // Find the order first to ensure it exists
+    const order = await Order.findById(orderId);
+    if (!order) {
       return res.status(404).json({
         success: false,
         message: 'Order not found'
       });
     }
 
+    // Update order with delivery person details
+    order.deliveryPerson = {
+      _id: deliveryPerson._id,
+      name: deliveryPerson.name,
+      email: deliveryPerson.email,
+      phone: deliveryPerson.phone
+    };
+    order.deliveryStatus = 'processing';
+
+    // Save the order
+    await order.save();
+
     console.log('Order updated successfully:', {
-      orderId: updatedOrder._id,
-      deliveryPersonId: updatedOrder.deliveryPerson?._id,
-      status: updatedOrder.deliveryStatus
+      orderId: order._id,
+      deliveryPersonId: order.deliveryPerson?._id,
+      status: order.deliveryStatus
     });
+
+    // Verify the update was successful
+    const verifiedOrder = await Order.findOne({
+      _id: orderId,
+      'deliveryPerson._id': deliveryPerson._id
+    });
+
+    if (!verifiedOrder) {
+      console.error('Order assignment verification failed');
+      return res.status(500).json({
+        success: false,
+        message: 'Order assignment verification failed'
+      });
+    }
 
     res.json({
       success: true,
       message: 'Delivery person assigned successfully',
-      order: updatedOrder
+      order: verifiedOrder
     });
 
   } catch (error) {

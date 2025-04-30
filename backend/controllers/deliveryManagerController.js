@@ -1,6 +1,7 @@
 import DeliveryManager from "../modeles/deliveryManager.js";
 import Orders from "../modeles/order2.js";
 import jwt from "jsonwebtoken";
+import DeliveryPerson from "../modeles/DeliveryPerson.js";
 
 // Register new delivery manager
 export const registerDeliveryManager = async (req, res) => {
@@ -142,5 +143,83 @@ export const getProfile = async (req, res) => {
         res.json(manager);
     } catch (error) {
         res.status(500).json({ message: "Error fetching profile", error: error.message });
+    }
+};
+
+// Assign delivery person to order
+export const assignDeliveryPerson = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { deliveryPersonId } = req.body;
+
+        console.log('Assignment request received:', { orderId, deliveryPersonId });
+
+        if (!orderId || !deliveryPersonId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Order ID and Delivery Person ID are required'
+            });
+        }
+
+        // Find the order
+        const order = await Orders.findById(orderId);
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: 'Order not found'
+            });
+        }
+
+        // Find the delivery person
+        const deliveryPerson = await DeliveryPerson.findById(deliveryPersonId);
+        if (!deliveryPerson) {
+            return res.status(404).json({
+                success: false,
+                message: 'Delivery person not found'
+            });
+        }
+
+        console.log('Found order and delivery person:', {
+            orderId: order._id,
+            orderStatus: order.deliveryStatus,
+            deliveryPersonId: deliveryPerson._id,
+            deliveryPersonName: deliveryPerson.name
+        });
+
+        try {
+            // Update order with delivery person details
+            order.deliveryPerson = {
+                _id: deliveryPerson._id,
+                name: deliveryPerson.name,
+                email: deliveryPerson.email,
+                phone: deliveryPerson.phone
+            };
+            order.deliveryStatus = 'processing';
+
+            // Save the updated order
+            await order.save();
+
+            console.log('Order updated successfully');
+
+            res.json({
+                success: true,
+                message: 'Delivery person assigned successfully',
+                order
+            });
+        } catch (saveError) {
+            console.error('Error saving order:', saveError);
+            return res.status(500).json({
+                success: false,
+                message: 'Error saving order with delivery person details',
+                error: saveError.message
+            });
+        }
+
+    } catch (error) {
+        console.error('Error in assignDeliveryPerson:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to assign delivery person'
+        });
     }
 }; 

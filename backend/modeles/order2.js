@@ -17,6 +17,12 @@ const orderSchema = new mongoose.Schema({
         enum: ["processing", "pickedup", "delivered"],
         default: "processing",
     },
+    deliveryPerson: {
+        _id: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryPerson' },
+        name: String,
+        email: String,
+        phone: String
+    },
     items: [
         {
           shoeId: {
@@ -35,11 +41,7 @@ const orderSchema = new mongoose.Schema({
           imageUrl: { type: String, required: true },
         },
     ],
-
-
-}
-    
-)
+});
 
 const Orders = mongoose.model("Order",orderSchema);
 export default Orders;

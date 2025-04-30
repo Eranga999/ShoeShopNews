@@ -13,7 +13,8 @@ import {
     FiPhone,
     FiMail,
     FiTrello,
-    FiCreditCard
+    FiCreditCard,
+    FiAlertCircle
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -30,6 +31,8 @@ const DeliveryPersonDashboard = () => {
         completed: 0,
         totalDeliveries: 0
     });
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [showOrderDetails, setShowOrderDetails] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('deliveryPersonToken');
@@ -44,6 +47,9 @@ const DeliveryPersonDashboard = () => {
     useEffect(() => {
         if (profile) {
             fetchAssignedOrders();
+            // Refresh orders every 30 seconds
+            const interval = setInterval(fetchAssignedOrders, 30000);
+            return () => clearInterval(interval);
         }
     }, [profile]);
 
@@ -93,11 +99,11 @@ const DeliveryPersonDashboard = () => {
                     },
                     quantity: item.quantity,
                     imageUrl: item.imageUrl || null,
-                    price: item.price
+                    price: item.price || (order.totalAmount / order.items.reduce((sum, i) => sum + i.quantity, 0))
                 }))
             }));
 
-            console.log('Fetched orders:', transformedOrders); // Debug log
+            console.log('Transformed orders:', transformedOrders);
             setOrders(transformedOrders);
             
             // Calculate stats
@@ -117,42 +123,36 @@ const DeliveryPersonDashboard = () => {
                 localStorage.removeItem('deliveryPersonToken');
                 navigate('/delivery-person-login');
             } else {
-                toast.error('Failed to fetch orders');
+                toast.error(error.response?.data?.message || 'Failed to fetch orders');
             }
             setLoading(false);
         }
     };
 
-    // Add auto-refresh functionality
-    useEffect(() => {
-        if (profile) {
-            fetchAssignedOrders();
-            // Refresh orders every 30 seconds
-            const interval = setInterval(fetchAssignedOrders, 30000);
-            return () => clearInterval(interval);
-        }
-    }, [profile]);
-
     const handleStatusChange = async (orderId, newStatus) => {
         try {
             const token = localStorage.getItem('deliveryPersonToken');
-            await axios.put(
+            const response = await axios.put(
                 `http://localhost:5000/api/delivery/delivery-person/orders/${orderId}/status`,
                 { deliveryStatus: newStatus },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            // Update orders state
-            setOrders(prevOrders => prevOrders.map(order => {
-                if (order._id === orderId) {
-                    return { ...order, deliveryStatus: newStatus };
-                }
-                return order;
-            }));
+            if (response.data.success) {
+                // Update orders state
+                setOrders(prevOrders => prevOrders.map(order => {
+                    if (order._id === orderId) {
+                        return { ...order, deliveryStatus: newStatus };
+                    }
+                    return order;
+                }));
 
-            // Update stats
-            fetchAssignedOrders();
-            toast.success('Order status updated successfully');
+                // Update stats
+                fetchAssignedOrders();
+                toast.success('Order status updated successfully');
+            } else {
+                throw new Error(response.data.message || 'Failed to update status');
+            }
         } catch (error) {
             console.error('Error updating order status:', error);
             if (error.response?.status === 401 || error.response?.status === 403) {
@@ -160,7 +160,7 @@ const DeliveryPersonDashboard = () => {
                 localStorage.removeItem('deliveryPersonToken');
                 navigate('/delivery-person-login');
             } else {
-                toast.error('Failed to update order status');
+                toast.error(error.response?.data?.message || 'Failed to update order status');
             }
         }
     };
@@ -169,6 +169,73 @@ const DeliveryPersonDashboard = () => {
         localStorage.removeItem('deliveryPersonToken');
         navigate('/delivery-person-login');
     };
+
+    const OrderDetailsModal = () => (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+            <div className="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full">
+                <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-xl font-bold">Order Details</h2>
+                    <button
+                        onClick={() => setShowOrderDetails(false)}
+                        className="text-gray-500 hover:text-gray-700"
+                    >
+                        <FiX className="w-6 h-6" />
+                    </button>
+                </div>
+                {selectedOrder && (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="font-semibold">Order Information</p>
+                                <p>Order ID: {selectedOrder._id}</p>
+                                <p>Status: <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    selectedOrder.deliveryStatus === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                                    selectedOrder.deliveryStatus === 'pickedup' ? 'bg-blue-100 text-blue-800' :
+                                    selectedOrder.deliveryStatus === 'delivered' ? 'bg-green-100 text-green-800' :
+                                    'bg-gray-100 text-gray-800'
+                                }`}>
+                                    {selectedOrder.deliveryStatus.charAt(0).toUpperCase() + selectedOrder.deliveryStatus.slice(1)}
+                                </span></p>
+                                <p>Total: Rs.{selectedOrder.totalPrice.toFixed(2)}</p>
+                                <p>Payment Method: {selectedOrder.paymentMethod}</p>
+                            </div>
+                            <div>
+                                <p className="font-semibold">Customer Information</p>
+                                <p>Name: {selectedOrder.customerName}</p>
+                                <p>Email: {selectedOrder.customerEmail}</p>
+                                <p>Shipping Address: {selectedOrder.shippingAddress}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p className="font-semibold mb-2">Order Items</p>
+                            <div className="space-y-2">
+                                {selectedOrder.items.map((item, index) => (
+                                    <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                                        <div className="flex items-center space-x-2">
+                                            {item.imageUrl && (
+                                                <img src={item.imageUrl} alt={item.product.name} className="w-12 h-12 object-cover rounded" />
+                                            )}
+                                            <span>{item.product.name} x {item.quantity}</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-sm text-gray-600">Price: Rs.{(item.price).toFixed(2)}</div>
+                                            <div className="font-medium">Total: Rs.{(item.price * item.quantity).toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                            <div className="flex justify-between font-semibold">
+                                <span>Total Amount:</span>
+                                <span>Rs.{selectedOrder.totalPrice.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 
     if (loading) {
         return (
@@ -367,15 +434,27 @@ const DeliveryPersonDashboard = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <select
-                                                    value={order.deliveryStatus}
-                                                    onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                                                    className="block w-full p-2 rounded-md border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                >
-                                                    <option value="processing">Processing</option>
-                                                    <option value="pickedup">Picked Up</option>
-                                                    <option value="delivered">Delivered</option>
-                                                </select>
+                                                <div className="flex space-x-2">
+                                                    <select
+                                                        value={order.deliveryStatus}
+                                                        onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                                                        className="block p-2 rounded-md border border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                                    >
+                                                        <option value="processing">Processing</option>
+                                                        <option value="pickedup">Picked Up</option>
+                                                        <option value="delivered">Delivered</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedOrder(order);
+                                                            setShowOrderDetails(true);
+                                                        }}
+                                                        className="text-blue-600 hover:text-blue-900"
+                                                        title="View Details"
+                                                    >
+                                                        <FiAlertCircle className="w-5 h-5" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -385,6 +464,9 @@ const DeliveryPersonDashboard = () => {
                     )}
                 </div>
             </div>
+
+            {/* Order Details Modal */}
+            {showOrderDetails && <OrderDetailsModal />}
         </div>
     );
 };

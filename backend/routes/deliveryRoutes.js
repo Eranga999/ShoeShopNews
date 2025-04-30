@@ -13,6 +13,7 @@ import {
 } from '../controllers/deliveryPersonController.js';
 import { protect, authMiddleware, deliveryPersonAuth } from '../middleware/authMiddleware.js';
 import { Order } from '../models/orderModel.js';
+import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -24,15 +25,19 @@ router.post('/delivery-person/login', loginDeliveryPerson);
 router.get('/delivery-person/profile', deliveryPersonAuth, getProfile);
 router.get('/delivery-person/orders', deliveryPersonAuth, async (req, res) => {
   try {
-    console.log('Fetching orders for delivery person:', req.user.id); // Debug log
+    console.log('Fetching orders for delivery person:', req.user.id);
+
+    // Convert string ID to ObjectId
+    const deliveryPersonId = new mongoose.Types.ObjectId(req.user.id);
 
     const orders = await Order.find({ 
-      'deliveryPerson._id': req.user.id 
+      'deliveryPerson._id': deliveryPersonId
     })
     .sort({ createdAt: -1 })
-    .lean(); // Use lean() for better performance
+    .lean();
 
-    console.log('Found orders:', orders.length); // Debug log
+    console.log('Found orders:', orders.length);
+    console.log('Query:', { 'deliveryPerson._id': deliveryPersonId });
 
     if (!orders || orders.length === 0) {
       return res.json([]);
@@ -79,10 +84,13 @@ router.put('/delivery-person/orders/:orderId/status', deliveryPersonAuth, async 
     const { orderId } = req.params;
     const { deliveryStatus } = req.body;
 
+    // Convert string ID to ObjectId
+    const deliveryPersonId = new mongoose.Types.ObjectId(req.user.id);
+
     // Verify the order belongs to this delivery person
     const order = await Order.findOne({
       _id: orderId,
-      'deliveryPerson._id': req.user.id
+      'deliveryPerson._id': deliveryPersonId
     });
 
     if (!order) {

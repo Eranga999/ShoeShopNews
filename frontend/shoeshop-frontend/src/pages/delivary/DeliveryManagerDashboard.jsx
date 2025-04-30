@@ -220,7 +220,12 @@ const DeliveryManagerDashboard = () => {
       const response = await axios.put(
         `http://localhost:5000/api/delivery/manager/orders/${orderId}/assign`,
         { deliveryPersonId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
 
       if (response.data.success) {
@@ -241,15 +246,9 @@ const DeliveryManagerDashboard = () => {
           return order;
         }));
 
-        // Update delivery stats
-        setDeliveryStats(prev => ({
-          ...prev,
-          pendingDeliveries: prev.pendingDeliveries + 1
-        }));
-
         toast.success('Delivery person assigned successfully');
         // Refresh the orders list to get updated data
-        fetchOrders();
+        await fetchOrders();
       } else {
         throw new Error(response.data.message || 'Failed to assign delivery person');
       }
