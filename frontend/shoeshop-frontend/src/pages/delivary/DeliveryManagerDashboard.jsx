@@ -22,6 +22,8 @@ import {
 import axios from "axios";
 import { toast } from "react-toastify";
 import DeliveryManagerLogin from "./DeliveryManagerLogin";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const DeliveryManagerDashboard = () => {
   const navigate = useNavigate();
@@ -45,6 +47,7 @@ const DeliveryManagerDashboard = () => {
   const [selectedDeliveryDetails, setSelectedDeliveryDetails] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deliveryDetails, setDeliveryDetails] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('deliveryManagerToken');
@@ -716,6 +719,71 @@ const DeliveryManagerDashboard = () => {
     }
   };
 
+  // Filtered delivery details by search term
+  const filteredDeliveryDetails = deliveryDetails.filter(detail => {
+    const name = typeof detail.deliveryPersonId === 'object' ? detail.deliveryPersonId.name : detail.deliveryPersonId;
+    return name && name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  // PDF generation function
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    // Title
+    doc.setFontSize(18);
+    doc.text('Delivery Details Report', doc.internal.pageSize.getWidth() / 2, 18, { align: 'center' });
+    let y = 28;
+    // Subtitle for search
+    if (searchTerm.trim()) {
+      doc.setFontSize(12);
+      doc.setTextColor(60, 60, 60);
+      doc.text(`Filtered by Delivery Person: ${searchTerm}`, doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
+      y += 8;
+    }
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    const tableColumn = [
+      'Order ID',
+      'Delivery Person',
+      'Delivery Cost',
+      'Mileage',
+      'Petrol Cost',
+      'Time Spent',
+      'Submitted At'
+    ];
+    const tableRows = filteredDeliveryDetails.map(detail => [
+      typeof detail.orderId === 'object'
+        ? detail.orderId.orderNumber || detail.orderId._id || '-'
+        : detail.orderId || '-',
+      typeof detail.deliveryPersonId === 'object'
+        ? detail.deliveryPersonId.name || detail.deliveryPersonId._id || '-'
+        : detail.deliveryPersonId || '-',
+      `Rs. ${detail.deliveryCost?.toFixed(2) ?? '-'}`,
+      `${detail.mileage?.toFixed(1) ?? '-'} km`,
+      `Rs. ${detail.petrolCost?.toFixed(2) ?? '-'}`,
+      `${detail.timeSpent?.toFixed(1) ?? '-'} hours`,
+      detail.submittedAt ? new Date(detail.submittedAt).toLocaleString() : '-'
+    ]);
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: y + 4,
+      styles: {
+        fontSize: 10,
+        cellPadding: 3,
+        halign: 'center',
+      },
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: { fillColor: [240, 240, 240] },
+      rowPageBreak: 'avoid',
+      margin: { left: 10, right: 10 },
+    });
+    doc.save('delivery-details-report.pdf');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex justify-center items-center">
@@ -934,12 +1002,27 @@ const DeliveryManagerDashboard = () => {
 
         {/* Delivery Details History Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden mt-10">
-          <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between px-6 py-4 border-b border-gray-200 gap-4">
             <h2 className="text-xl font-semibold text-gray-800">Delivery Details History</h2>
+            <div className="flex flex-col md:flex-row md:items-center gap-2 w-full md:w-auto">
+              <input
+                type="text"
+                placeholder="Search by Delivery Person Name..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 w-full md:w-64"
+              />
+              <button
+                onClick={handleDownloadPDF}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-semibold shadow-sm"
+              >
+                Download PDF
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Person</th>
@@ -951,13 +1034,13 @@ const DeliveryManagerDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {deliveryDetails.length === 0 ? (
+                {filteredDeliveryDetails.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-8 text-gray-500">No delivery details found.</td>
                   </tr>
                 ) : (
-                  deliveryDetails.map((detail) => (
-                    <tr key={detail._id} className="hover:bg-gray-50">
+                  filteredDeliveryDetails.map((detail, idx) => (
+                    <tr key={detail._id} className={idx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {typeof detail.orderId === 'object'
                           ? detail.orderId.orderNumber || detail.orderId._id || '-'
