@@ -1,17 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiDollarSign, FiTruck, FiDroplet, FiClock, FiSend } from 'react-icons/fi';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
+const DeliveryDetailsForm = ({ orderId, onSubmit, onClose, initialValues }) => {
     const [details, setDetails] = useState({
-        deliveryCost: '',
-        mileage: '',
-        petrolCost: '',
-        timeSpent: '',
-        additionalNotes: ''
+        deliveryCost: initialValues?.deliveryCost || '',
+        mileage: initialValues?.mileage || '',
+        petrolCost: initialValues?.petrolCost || '',
+        timeSpent: initialValues?.timeSpent || '',
+        additionalNotes: initialValues?.additionalNotes || ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // If initialValues change (e.g. when editing a different row), update state
+    useEffect(() => {
+        if (initialValues) {
+            setDetails({
+                deliveryCost: initialValues.deliveryCost || '',
+                mileage: initialValues.mileage || '',
+                petrolCost: initialValues.petrolCost || '',
+                timeSpent: initialValues.timeSpent || '',
+                additionalNotes: initialValues.additionalNotes || ''
+            });
+        }
+    }, [initialValues]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -35,25 +48,47 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
                 }
             }
 
-            const response = await axios.post(
-                `http://localhost:5000/api/delivery/delivery-person/orders/${orderId}/details`,
-                {
-                    deliveryCost: Number(details.deliveryCost),
-                    mileage: Number(details.mileage),
-                    petrolCost: Number(details.petrolCost),
-                    timeSpent: Number(details.timeSpent),
-                    additionalNotes: details.additionalNotes || ''
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json'
+            let response;
+            if (initialValues) {
+                // Update (PUT)
+                response = await axios.put(
+                    `http://localhost:5000/api/delivery/delivery-person/orders/${orderId}/details`,
+                    {
+                        deliveryCost: Number(details.deliveryCost),
+                        mileage: Number(details.mileage),
+                        petrolCost: Number(details.petrolCost),
+                        timeSpent: Number(details.timeSpent),
+                        additionalNotes: details.additionalNotes || ''
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
                     }
-                }
-            );
+                );
+            } else {
+                // Create (POST)
+                response = await axios.post(
+                    `http://localhost:5000/api/delivery/delivery-person/orders/${orderId}/details`,
+                    {
+                        deliveryCost: Number(details.deliveryCost),
+                        mileage: Number(details.mileage),
+                        petrolCost: Number(details.petrolCost),
+                        timeSpent: Number(details.timeSpent),
+                        additionalNotes: details.additionalNotes || ''
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+            }
 
             if (response.data.success) {
-                toast.success('Delivery details submitted successfully');
+                toast.success(initialValues ? 'Delivery details updated successfully' : 'Delivery details submitted successfully');
                 onSubmit && onSubmit(response.data.details);
                 setDetails({
                     deliveryCost: '',

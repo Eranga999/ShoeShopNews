@@ -142,6 +142,12 @@ router.post('/delivery-person/orders/:orderId/details', deliveryPersonAuth, asyn
       details: deliveryDetailsDoc
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery details already exist for this order. Please update instead.'
+      });
+    }
     console.error('Error submitting delivery details:', error);
     res.status(500).json({
       success: false,
@@ -187,12 +193,22 @@ router.put('/delivery-person/orders/:orderId/details', deliveryPersonAuth, async
     const deliveryPersonId = req.user.id;
     const update = req.body;
 
+    // Convert to ObjectId
+    const orderObjectId = new mongoose.Types.ObjectId(orderId);
+    const deliveryPersonObjectId = new mongoose.Types.ObjectId(deliveryPersonId);
+
+    // Check if the document exists
+    const exists = await DeliveryDetails.findOne({ orderId: orderObjectId, deliveryPersonId: deliveryPersonObjectId });
+    if (!exists) {
+      return res.status(404).json({ success: false, message: 'Detail not found' });
+    }
+
+    // Update
     const detail = await DeliveryDetails.findOneAndUpdate(
-      { orderId, deliveryPersonId },
+      { orderId: orderObjectId, deliveryPersonId: deliveryPersonObjectId },
       update,
       { new: true }
     );
-    if (!detail) return res.status(404).json({ success: false, message: 'Detail not found' });
     res.json({ success: true, details: detail });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
