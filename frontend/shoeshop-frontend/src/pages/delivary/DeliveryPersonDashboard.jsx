@@ -14,7 +14,11 @@ import {
     FiMail,
     FiTrello,
     FiCreditCard,
-    FiAlertCircle
+    FiAlertCircle,
+    FiDollarSign,
+    FiClock,
+    FiDroplet,
+    FiStar
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -36,6 +40,13 @@ const DeliveryPersonDashboard = () => {
     const [showOrderDetails, setShowOrderDetails] = useState(false);
     const [showDeliveryForm, setShowDeliveryForm] = useState(false);
     const [selectedOrderForDetails, setSelectedOrderForDetails] = useState(null);
+    const [deliveryDetails, setDeliveryDetails] = useState([]);
+    const [stats, setStats] = useState({
+        totalDeliveries: 0,
+        totalEarnings: 0,
+        totalMileage: 0,
+        averageRating: 0
+    });
 
     useEffect(() => {
         const token = localStorage.getItem('deliveryPersonToken');
@@ -50,6 +61,7 @@ const DeliveryPersonDashboard = () => {
     useEffect(() => {
         if (profile) {
             fetchAssignedOrders();
+            fetchDeliveryDetails();
             // Refresh orders every 30 seconds
             const interval = setInterval(fetchAssignedOrders, 30000);
             return () => clearInterval(interval);
@@ -128,6 +140,47 @@ const DeliveryPersonDashboard = () => {
             } else {
                 toast.error(error.response?.data?.message || 'Failed to fetch orders');
             }
+            setLoading(false);
+        }
+    };
+
+    const fetchDeliveryDetails = async () => {
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('deliveryPersonToken');
+            
+            const response = await axios.get(
+                'http://localhost:5000/api/delivery/person/delivery-details',
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (response.data.success) {
+                setDeliveryDetails(response.data.details);
+                
+                // Calculate statistics
+                const details = response.data.details;
+                const stats = {
+                    totalDeliveries: details.length,
+                    totalEarnings: details.reduce((sum, detail) => sum + detail.deliveryCost, 0),
+                    totalMileage: details.reduce((sum, detail) => sum + detail.mileage, 0),
+                    averageRating: details.reduce((sum, detail) => sum + (detail.rating || 0), 0) / details.length || 0
+                };
+                setStats(stats);
+            }
+        } catch (error) {
+            console.error('Error fetching delivery details:', error);
+            if (error.response?.status === 401) {
+                toast.error('Session expired. Please login again.');
+                navigate('/delivery-login');
+            } else {
+                toast.error('Failed to fetch delivery details. Please try again.');
+            }
+        } finally {
             setLoading(false);
         }
     };
@@ -281,6 +334,13 @@ const DeliveryPersonDashboard = () => {
                         >
                             <FiRefreshCw className="text-lg" />
                             Refresh
+                        </button>
+                        <button
+                            onClick={fetchDeliveryDetails}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                            <FiRefreshCw className="text-lg" />
+                            Refresh Data
                         </button>
                         <button
                             onClick={handleLogout}
@@ -483,6 +543,64 @@ const DeliveryPersonDashboard = () => {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+                </div>
+
+                {/* Delivery Details Table */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                        <h2 className="text-xl font-semibold text-gray-800">Delivery History</h2>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Cost</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mileage</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Petrol Cost</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Spent</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {deliveryDetails.map((detail) => (
+                                    <tr key={detail._id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {detail.orderId}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {new Date(detail.submittedAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            Rs. {detail.deliveryCost}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {detail.mileage} km
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            Rs. {detail.petrolCost}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {detail.timeSpent} hours
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                Completed
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    {deliveryDetails.length === 0 && (
+                        <div className="text-center py-8">
+                            <FiTruck className="mx-auto h-12 w-12 text-gray-400" />
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No Delivery Details</h3>
+                            <p className="mt-1 text-sm text-gray-500">You haven't submitted any delivery details yet.</p>
                         </div>
                     )}
                 </div>

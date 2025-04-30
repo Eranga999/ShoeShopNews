@@ -15,6 +15,7 @@ import { protect, authMiddleware, deliveryPersonAuth } from '../middleware/authM
 import { Order } from '../models/orderModel.js';
 import mongoose from 'mongoose';
 import { DeliveryPerson } from '../models/deliveryPersonModel.js';
+import { DeliveryDetail } from '../models/deliveryDetailModel.js';
 
 const router = express.Router();
 
@@ -356,6 +357,29 @@ router.get('/manager/delivery-details', authMiddleware, async (req, res) => {
     }));
 
     res.json(deliveryDetails);
+  } catch (error) {
+    console.error('Error fetching delivery details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch delivery details',
+      error: error.message
+    });
+  }
+});
+
+// Get delivery details for a specific delivery person
+router.get('/person/delivery-details', deliveryPersonAuth, async (req, res) => {
+  try {
+    const deliveryPersonId = req.user.id;
+
+    const deliveryDetails = await DeliveryDetail.find({ 
+      'deliveryPerson._id': deliveryPersonId 
+    }).sort({ submittedAt: -1 }); // Sort by submission date, newest first
+
+    res.json({
+      success: true,
+      details: deliveryDetails
+    });
   } catch (error) {
     console.error('Error fetching delivery details:', error);
     res.status(500).json({
