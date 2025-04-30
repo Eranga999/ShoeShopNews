@@ -26,7 +26,6 @@ const orderSchema = new mongoose.Schema({
     ModelName: String,
     quantity: Number,
     price: Number,
-    totalAmount: Number,
     imageUrl: String
   }],
   paymentMethod: {
@@ -53,24 +52,20 @@ const orderSchema = new mongoose.Schema({
     phone: String
   },
   deliveryDetails: {
-    deliveryCost: {
-      type: Number,
-      min: 0
-    },
-    mileage: {
-      type: Number,
-      min: 0
-    },
-    petrolCost: {
-      type: Number,
-      min: 0
-    },
-    timeSpent: {
-      type: Number,
-      min: 0
-    },
+    deliveryCost: Number,
+    mileage: Number,
+    petrolCost: Number,
+    timeSpent: Number,
     additionalNotes: String,
-    submittedAt: Date
+    submittedAt: Date,
+    submittedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'DeliveryPerson'
+    }
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true

@@ -36,7 +36,14 @@ const DeliveryDetailsList = () => {
             }
         } catch (error) {
             console.error('Error fetching delivery details:', error);
-            toast.error('Failed to fetch delivery details');
+            if (error.response?.status === 401) {
+                toast.error('Session expired. Please login again.');
+                localStorage.removeItem('deliveryManagerToken');
+            } else if (error.response?.status === 403) {
+                toast.error('You do not have permission to view delivery details');
+            } else {
+                toast.error(error.response?.data?.message || 'Failed to fetch delivery details');
+            }
         } finally {
             setLoading(false);
         }

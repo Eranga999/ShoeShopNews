@@ -14,6 +14,7 @@ import {
 import { protect, authMiddleware, deliveryPersonAuth } from '../middleware/authMiddleware.js';
 import { Order } from '../models/orderModel.js';
 import mongoose from 'mongoose';
+import { DeliveryPerson } from '../models/deliveryPersonModel.js';
 
 const router = express.Router();
 
@@ -77,6 +78,31 @@ router.post('/delivery-person/orders/:orderId/details', deliveryPersonAuth, asyn
     const { deliveryCost, mileage, petrolCost, timeSpent, additionalNotes } = req.body;
     const deliveryPersonId = new mongoose.Types.ObjectId(req.user.id);
 
+    console.log('Submitting delivery details:', {
+      orderId,
+      deliveryPersonId: deliveryPersonId.toString(),
+      details: { deliveryCost, mileage, petrolCost, timeSpent }
+    });
+
+    // Validate required fields
+    if (!deliveryCost || !mileage || !petrolCost || !timeSpent) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields (deliveryCost, mileage, petrolCost, timeSpent) are required'
+      });
+    }
+
+    // Validate numeric values
+    const numericFields = { deliveryCost, mileage, petrolCost, timeSpent };
+    for (const [field, value] of Object.entries(numericFields)) {
+      if (isNaN(value) || Number(value) <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid ${field}: must be a positive number`
+        });
+      }
+    }
+
     // Verify the order belongs to this delivery person
     const order = await Order.findOne({
       _id: orderId,
@@ -84,6 +110,10 @@ router.post('/delivery-person/orders/:orderId/details', deliveryPersonAuth, asyn
     });
 
     if (!order) {
+      console.log('Order not found or not assigned to delivery person:', {
+        orderId,
+        deliveryPersonId: deliveryPersonId.toString()
+      });
       return res.status(404).json({ 
         success: false,
         message: 'Order not found or not assigned to you' 
@@ -96,11 +126,14 @@ router.post('/delivery-person/orders/:orderId/details', deliveryPersonAuth, asyn
       mileage: Number(mileage),
       petrolCost: Number(petrolCost),
       timeSpent: Number(timeSpent),
-      additionalNotes,
-      submittedAt: new Date()
+      additionalNotes: additionalNotes || '',
+      submittedAt: new Date(),
+      submittedBy: deliveryPersonId
     };
 
     await order.save();
+
+    console.log('Delivery details saved successfully for order:', orderId);
 
     res.json({
       success: true,
@@ -117,13 +150,129 @@ router.post('/delivery-person/orders/:orderId/details', deliveryPersonAuth, asyn
   }
 });
 
+// Add GET endpoint to fetch delivery details
+router.get('/delivery-person/orders/:orderId/details', authMiddleware, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Find the order
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Order not found' 
+      });
+    }
+
+    if (!order.deliveryDetails) {
+      return res.status(404).json({
+        success: false,
+        message: 'No delivery details found for this order'
+      });
+    }
+
+    res.json({
+      success: true,
+      details: order.deliveryDetails
+    });
+  } catch (error) {
+    console.error('Error fetching delivery details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch delivery details',
+      error: error.message
+    });
+  }
+});
+
 // Protected delivery manager routes
 router.use('/manager', authMiddleware);
 router.get('/manager/delivery-persons', getDeliveryPersons);
 router.post('/manager/delivery-persons', addDeliveryPerson);
+router.delete('/manager/delivery-persons/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if delivery person exists
+    const deliveryPerson = await DeliveryPerson.findById(id);
+    if (!deliveryPerson) {
+      return res.status(404).json({
+        success: false,
+        message: 'Delivery person not found'
+      });
+    }
+
+    // Check for active orders
+    const activeOrders = await Order.find({
+      'deliveryPerson._id': id,
+      deliveryStatus: { 
+        $nin: ['delivered', 'cancelled'] 
+      }
+    });
+
+    if (activeOrders.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete delivery person with active orders'
+      });
+    }
+
+    // Delete the delivery person
+    await DeliveryPerson.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Delivery person deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting delivery person:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
 router.get('/manager/orders', getOrders);
 router.put('/manager/orders/:orderId', updateOrderStatus);
 router.put('/manager/orders/:orderId/assign', assignDeliveryPerson);
+
+// Add manager endpoint to get delivery details
+router.get('/manager/orders/:orderId/details', authMiddleware, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Find the order
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Order not found' 
+      });
+    }
+
+    if (!order.deliveryDetails) {
+      return res.status(404).json({
+        success: false,
+        message: 'No delivery details found for this order'
+      });
+    }
+
+    res.json({
+      success: true,
+      details: order.deliveryDetails
+    });
+  } catch (error) {
+    console.error('Error fetching delivery details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch delivery details',
+      error: error.message
+    });
+  }
+});
 
 // Protected order status update route for delivery persons
 router.put('/delivery-person/orders/:orderId/status', deliveryPersonAuth, async (req, res) => {
@@ -185,6 +334,34 @@ router.post('/manager/send-order-assignment', authMiddleware, async (req, res) =
     res.status(500).json({ 
       message: 'Failed to handle order assignment notification',
       error: error.message 
+    });
+  }
+});
+
+// Add GET endpoint to fetch all delivery details for manager
+router.get('/manager/delivery-details', authMiddleware, async (req, res) => {
+  try {
+    const orders = await Order.find({ 
+      deliveryDetails: { $exists: true } 
+    })
+    .populate('deliveryPerson._id', 'name email phone')
+    .sort({ 'deliveryDetails.submittedAt': -1 })
+    .lean();
+
+    const deliveryDetails = orders.map(order => ({
+      _id: order._id,
+      orderId: order._id,
+      deliveryPerson: order.deliveryPerson,
+      ...order.deliveryDetails
+    }));
+
+    res.json(deliveryDetails);
+  } catch (error) {
+    console.error('Error fetching delivery details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch delivery details',
+      error: error.message
     });
   }
 });

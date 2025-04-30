@@ -1,7 +1,8 @@
-import DeliveryPerson from '../modeles/DeliveryPerson.js';
+import { DeliveryPerson } from '../models/deliveryPersonModel.js';
 import { validateDeliveryPerson } from '../validation/deliveryPersonValidation.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { Order } from '../models/orderModel.js';
 
 // Create a new delivery person
 export const createDeliveryPerson = async (req, res) => {
@@ -206,19 +207,38 @@ export const updateDeliveryPerson = async (req, res) => {
 // Delete a delivery person
 export const deleteDeliveryPerson = async (req, res) => {
   try {
-    const deletedDeliveryPerson = await DeliveryPerson.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
 
-    if (!deletedDeliveryPerson) {
+    // Check if delivery person exists
+    const deliveryPerson = await DeliveryPerson.findById(id);
+    if (!deliveryPerson) {
       return res.status(404).json({
         success: false,
         message: 'Delivery person not found'
       });
     }
 
+    // Check for active orders
+    const activeOrders = await Order.find({
+      'deliveryPerson._id': id,
+      deliveryStatus: { 
+        $nin: ['delivered', 'cancelled'] 
+      }
+    });
+
+    if (activeOrders.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete delivery person with active orders'
+      });
+    }
+
+    // Delete the delivery person
+    await DeliveryPerson.findByIdAndDelete(id);
+
     res.status(200).json({
       success: true,
-      message: 'Delivery person deleted successfully',
-      data: deletedDeliveryPerson
+      message: 'Delivery person deleted successfully'
     });
   } catch (error) {
     res.status(500).json({

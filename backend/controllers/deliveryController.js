@@ -1,4 +1,4 @@
-import DeliveryPerson from '../modeles/DeliveryPerson.js';
+import { DeliveryPerson } from '../models/deliveryPersonModel.js';
 import { Order } from '../models/orderModel.js';
 import axios from 'axios';
 

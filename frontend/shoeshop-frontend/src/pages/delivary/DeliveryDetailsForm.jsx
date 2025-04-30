@@ -25,9 +25,25 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
                 return;
             }
 
+            // Validate numeric fields
+            const numericFields = ['deliveryCost', 'mileage', 'petrolCost', 'timeSpent'];
+            for (const field of numericFields) {
+                if (!details[field] || isNaN(details[field]) || Number(details[field]) <= 0) {
+                    toast.error(`Please enter a valid ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
             const response = await axios.post(
                 `http://localhost:5000/api/delivery/delivery-person/orders/${orderId}/details`,
-                details,
+                {
+                    deliveryCost: Number(details.deliveryCost),
+                    mileage: Number(details.mileage),
+                    petrolCost: Number(details.petrolCost),
+                    timeSpent: Number(details.timeSpent),
+                    additionalNotes: details.additionalNotes || ''
+                },
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -40,6 +56,8 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
                 toast.success('Delivery details submitted successfully');
                 onSubmit && onSubmit(response.data.details);
                 onClose && onClose();
+            } else {
+                throw new Error(response.data.message || 'Failed to submit delivery details');
             }
         } catch (error) {
             console.error('Error submitting delivery details:', error);

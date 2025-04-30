@@ -174,7 +174,13 @@ const DeliveryPersonDashboard = () => {
     };
 
     const handleDeliveryDetailsSubmit = async (details) => {
-        await fetchAssignedOrders(); // Refresh orders after submission
+        try {
+            await fetchAssignedOrders(); // Refresh orders after submission
+            toast.success('Delivery details submitted successfully');
+        } catch (error) {
+            console.error('Error refreshing orders:', error);
+            toast.error('Failed to refresh orders list');
+        }
     };
 
     const OrderDetailsModal = () => (

@@ -16,7 +16,8 @@ import {
   FiMail,
   FiCreditCard,
   FiDollarSign,
-  FiInfo
+  FiInfo,
+  FiTrash2
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -51,6 +52,7 @@ const DeliveryManagerDashboard = () => {
   });
   const [showDeliveryDetails, setShowDeliveryDetails] = useState(false);
   const [selectedDeliveryDetails, setSelectedDeliveryDetails] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('deliveryManagerToken');
@@ -396,6 +398,63 @@ const DeliveryManagerDashboard = () => {
     }
   };
 
+  const handleDeleteDeliveryPerson = async (deliveryPersonId) => {
+    try {
+      setIsDeleting(true);
+      const token = localStorage.getItem('deliveryManagerToken');
+      
+      // Check if the delivery person has active orders
+      const activeOrders = orders.filter(
+        order => order.deliveryPerson?._id === deliveryPersonId && 
+        order.deliveryStatus !== 'delivered' && 
+        order.deliveryStatus !== 'cancelled'
+      );
+
+      if (activeOrders.length > 0) {
+        toast.error('Cannot delete delivery person with active orders');
+        return;
+      }
+
+      // Updated API endpoint to match backend route
+      const response = await axios.delete(
+        `http://localhost:5000/api/delivery/manager/delivery-persons/${deliveryPersonId}`,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
+      );
+
+      if (response.data.success) {
+        // Update the local state to remove the deleted delivery person
+        setDeliveryPersons(prevPersons => 
+          prevPersons.filter(person => person._id !== deliveryPersonId)
+        );
+
+        // Update delivery stats
+        setDeliveryStats(prev => ({
+          ...prev,
+          totalDrivers: prev.totalDrivers - 1
+        }));
+
+        toast.success('Delivery person deleted successfully');
+      } else {
+        throw new Error(response.data.message || 'Failed to delete delivery person');
+      }
+    } catch (error) {
+      console.error('Error deleting delivery person:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to delete delivery person';
+      toast.error(errorMessage);
+      
+      if (error.response?.status === 401) {
+        navigate('/delivery-login');
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const DeliveryPersonsModal = () => (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-xl max-w-4xl w-full">
@@ -419,6 +478,7 @@ const DeliveryManagerDashboard = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">License</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Orders</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -456,6 +516,20 @@ const DeliveryManagerDashboard = () => {
                         Total: {personOrders.length}
                       </div>
                     </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to delete this delivery person?')) {
+                            handleDeleteDeliveryPerson(person._id);
+                          }
+                        }}
+                        disabled={isDeleting || activeOrders.length > 0}
+                        className={`text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed`}
+                        title={activeOrders.length > 0 ? "Cannot delete: Has active orders" : "Delete delivery person"}
+                      >
+                        <FiTrash2 className="w-5 h-5" />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -466,22 +540,56 @@ const DeliveryManagerDashboard = () => {
     </div>
   );
 
-  // Add this function to fetch delivery details
+  // Update the fetchDeliveryDetails function
   const fetchDeliveryDetails = async (orderId) => {
     try {
+      console.log('Fetching delivery details for order:', orderId);
+      
       const token = localStorage.getItem('deliveryManagerToken');
+      if (!token) {
+        toast.error('Authentication required. Please login again.');
+        return;
+      }
+
+      // Updated API endpoint to match backend route
       const response = await axios.get(
         `http://localhost:5000/api/delivery/manager/orders/${orderId}/details`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
 
-      if (response.data.success) {
-        setSelectedDeliveryDetails(response.data.details);
+      console.log('Delivery details response:', response.data);
+
+      if (response.data && response.data.details) {
+        const details = response.data.details;
+        setSelectedDeliveryDetails({
+          deliveryCost: details.deliveryCost || 0,
+          mileage: details.mileage || 0,
+          petrolCost: details.petrolCost || 0,
+          timeSpent: details.timeSpent || 0,
+          additionalNotes: details.additionalNotes || '',
+          submittedAt: details.submittedAt || new Date().toISOString()
+        });
         setShowDeliveryDetails(true);
+      } else {
+        toast.info('No delivery details available for this order');
       }
     } catch (error) {
       console.error('Error fetching delivery details:', error);
-      toast.error('Failed to fetch delivery details');
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('deliveryManagerToken');
+        navigate('/delivery-manager-login');
+      } else if (error.response?.status === 404) {
+        toast.info('No delivery details found for this order yet');
+      } else {
+        const errorMessage = error.response?.data?.message || 'Failed to fetch delivery details';
+        toast.error(errorMessage);
+      }
     }
   };
 
@@ -531,9 +639,17 @@ const DeliveryManagerDashboard = () => {
               </div>
             </div>
             {selectedDeliveryDetails.additionalNotes && (
-              <div className="mt-4">
+              <div className="mt-4 pt-4 border-t border-gray-200">
                 <p className="text-sm text-gray-500">Additional Notes</p>
                 <p className="mt-1 text-gray-700">{selectedDeliveryDetails.additionalNotes}</p>
+              </div>
+            )}
+            {selectedDeliveryDetails.submittedAt && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-500">Submitted At</p>
+                <p className="mt-1 text-gray-700">
+                  {new Date(selectedDeliveryDetails.submittedAt).toLocaleString()}
+                </p>
               </div>
             )}
           </div>
@@ -747,9 +863,16 @@ const DeliveryManagerDashboard = () => {
                           <FiClipboard className="w-5 h-5" />
                         </button>
                         <button
-                          onClick={() => fetchDeliveryDetails(order._id)}
+                          onClick={() => {
+                            if (!order._id) {
+                                toast.error('Invalid order ID');
+                                return;
+                            }
+                            fetchDeliveryDetails(order._id);
+                          }}
                           className="text-green-600 hover:text-green-900"
                           title="View Delivery Details"
+                          disabled={!order._id}
                         >
                           <FiInfo className="w-5 h-5" />
                         </button>
