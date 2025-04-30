@@ -121,25 +121,25 @@ router.post('/delivery-person/orders/:orderId/details', deliveryPersonAuth, asyn
       });
     }
 
-    // Add delivery details to the order
-    order.deliveryDetails = {
+    // Save delivery details as a new document in the deliverydetails collection
+    const deliveryDetailsDoc = new DeliveryDetails({
+      orderId,
+      deliveryPersonId,
       deliveryCost: Number(deliveryCost),
       mileage: Number(mileage),
       petrolCost: Number(petrolCost),
       timeSpent: Number(timeSpent),
       additionalNotes: additionalNotes || '',
-      submittedAt: new Date(),
-      submittedBy: deliveryPersonId
-    };
-
-    await order.save();
+      submittedAt: new Date()
+    });
+    await deliveryDetailsDoc.save();
 
     console.log('Delivery details saved successfully for order:', orderId);
 
     res.json({
       success: true,
       message: 'Delivery details submitted successfully',
-      details: order.deliveryDetails
+      details: deliveryDetailsDoc
     });
   } catch (error) {
     console.error('Error submitting delivery details:', error);
@@ -155,18 +155,11 @@ router.post('/delivery-person/orders/:orderId/details', deliveryPersonAuth, asyn
 router.get('/delivery-person/orders/:orderId/details', authMiddleware, async (req, res) => {
   try {
     const { orderId } = req.params;
+    const deliveryPersonId = req.user.id;
 
-    // Find the order
-    const order = await Order.findById(orderId);
-    
-    if (!order) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Order not found' 
-      });
-    }
-
-    if (!order.deliveryDetails) {
+    // Find the delivery details document
+    const deliveryDetails = await DeliveryDetails.findOne({ orderId, deliveryPersonId });
+    if (!deliveryDetails) {
       return res.status(404).json({
         success: false,
         message: 'No delivery details found for this order'
@@ -175,7 +168,7 @@ router.get('/delivery-person/orders/:orderId/details', authMiddleware, async (re
 
     res.json({
       success: true,
-      details: order.deliveryDetails
+      details: deliveryDetails
     });
   } catch (error) {
     console.error('Error fetching delivery details:', error);
@@ -342,19 +335,11 @@ router.post('/manager/send-order-assignment', authMiddleware, async (req, res) =
 // Add GET endpoint to fetch all delivery details for manager
 router.get('/manager/delivery-details', authMiddleware, async (req, res) => {
   try {
-    const orders = await Order.find({ 
-      deliveryDetails: { $exists: true } 
-    })
-    .populate('deliveryPerson._id', 'name email phone')
-    .sort({ 'deliveryDetails.submittedAt': -1 })
-    .lean();
-
-    const deliveryDetails = orders.map(order => ({
-      _id: order._id,
-      orderId: order._id,
-      deliveryPerson: order.deliveryPerson,
-      ...order.deliveryDetails
-    }));
+    const deliveryDetails = await DeliveryDetails.find()
+      .populate('orderId', 'orderNumber')
+      .populate('deliveryPersonId', 'name email phone')
+      .sort({ submittedAt: -1 })
+      .lean();
 
     res.json(deliveryDetails);
   } catch (error) {
@@ -372,17 +357,10 @@ router.get('/person/delivery-details', deliveryPersonAuth, async (req, res) => {
   try {
     const deliveryPersonId = req.user.id;
 
-    // Find all orders assigned to this delivery person that have deliveryDetails
-    const orders = await Order.find({
-      'deliveryPerson._id': deliveryPersonId,
-      deliveryDetails: { $exists: true }
-    }).sort({ 'deliveryDetails.submittedAt': -1 });
-
-    // Map to delivery details format
-    const deliveryDetails = orders.map(order => ({
-      orderId: order._id,
-      ...order.deliveryDetails
-    }));
+    // Find all delivery details for this delivery person
+    const deliveryDetails = await DeliveryDetails.find({
+      deliveryPersonId
+    }).sort({ submittedAt: -1 });
 
     res.json({
       success: true,

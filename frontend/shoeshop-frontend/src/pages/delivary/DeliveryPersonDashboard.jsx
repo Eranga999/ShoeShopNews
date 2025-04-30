@@ -146,7 +146,7 @@ const DeliveryPersonDashboard = () => {
             const token = localStorage.getItem('deliveryPersonToken');
             
             const response = await axios.get(
-                'http://localhost:5000/api/delivery/delivery-person/delivery-details',
+                'http://localhost:5000/api/delivery/person/delivery-details',
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
