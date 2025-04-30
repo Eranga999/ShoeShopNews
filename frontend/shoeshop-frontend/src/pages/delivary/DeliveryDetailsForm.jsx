@@ -98,9 +98,10 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
                         </label>
                         <input
                             type="number"
+                            name="deliveryCost"
                             value={details.deliveryCost}
                             onChange={(e) => setDetails({ ...details, deliveryCost: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2"
+                            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                             required
                             min="0"
                             step="0.01"
@@ -115,9 +116,10 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
                         </label>
                         <input
                             type="number"
+                            name="mileage"
                             value={details.mileage}
                             onChange={(e) => setDetails({ ...details, mileage: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2"
+                            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                             required
                             min="0"
                             step="0.1"
@@ -132,9 +134,10 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
                         </label>
                         <input
                             type="number"
+                            name="petrolCost"
                             value={details.petrolCost}
                             onChange={(e) => setDetails({ ...details, petrolCost: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2"
+                            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                             required
                             min="0"
                             step="0.01"
@@ -149,9 +152,10 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
                         </label>
                         <input
                             type="number"
+                            name="timeSpent"
                             value={details.timeSpent}
                             onChange={(e) => setDetails({ ...details, timeSpent: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2"
+                            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                             required
                             min="0"
                             step="0.5"
@@ -163,9 +167,10 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
                         Additional Notes
                     </label>
                     <textarea
+                        name="additionalNotes"
                         value={details.additionalNotes}
                         onChange={(e) => setDetails({ ...details, additionalNotes: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2"
+                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                         rows="3"
                         placeholder="Enter any additional notes about the delivery..."
                     />
