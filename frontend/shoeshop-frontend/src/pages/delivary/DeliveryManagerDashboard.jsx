@@ -24,6 +24,8 @@ import { toast } from "react-toastify";
 import DeliveryManagerLogin from "./DeliveryManagerLogin";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Header from './Header';
+import Footer from './Footer';
 
 const DeliveryManagerDashboard = () => {
   const navigate = useNavigate();
@@ -793,8 +795,9 @@ const DeliveryManagerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen flex flex-col bg-gray-100">
+      <Header userName="Manager" onLogout={handleLogout} />
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Delivery Management</h1>
@@ -814,12 +817,6 @@ const DeliveryManagerDashboard = () => {
             >
               <FiRefreshCw className="text-lg" />
               Refresh Data
-            </button>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-            >
-              Logout
             </button>
           </div>
         </div>
@@ -1063,7 +1060,8 @@ const DeliveryManagerDashboard = () => {
             </table>
           </div>
         </div>
-      </div>
+      </main>
+      <Footer />
 
       {/* Order Details Modal */}
       {showDetailsModal && selectedOrder && (
