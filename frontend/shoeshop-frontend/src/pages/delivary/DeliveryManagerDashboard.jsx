@@ -44,6 +44,7 @@ const DeliveryManagerDashboard = () => {
   const [showDeliveryDetails, setShowDeliveryDetails] = useState(false);
   const [selectedDeliveryDetails, setSelectedDeliveryDetails] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deliveryDetails, setDeliveryDetails] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem('deliveryManagerToken');
@@ -56,6 +57,7 @@ const DeliveryManagerDashboard = () => {
       try {
         setLoading(true);
         await Promise.all([fetchOrders(), fetchDeliveryPersons()]);
+        fetchAllDeliveryDetails();
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -585,16 +587,14 @@ const DeliveryManagerDashboard = () => {
   const fetchDeliveryDetails = async (orderId) => {
     try {
       console.log('Fetching delivery details for order:', orderId);
-      
       const token = localStorage.getItem('deliveryManagerToken');
       if (!token) {
         toast.error('Authentication required. Please login again.');
         return;
       }
-
-      // Updated API endpoint to match backend route
+      // Use the manager-specific endpoint
       const response = await axios.get(
-        `http://localhost:5000/api/delivery/delivery-person/orders/${orderId}/details`,
+        `http://localhost:5000/api/delivery/manager/orders/${orderId}/details`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -602,9 +602,7 @@ const DeliveryManagerDashboard = () => {
           }
         }
       );
-
       console.log('Delivery details response:', response.data);
-
       if (response.data && response.data.details) {
         const details = response.data.details;
         setSelectedDeliveryDetails({
@@ -702,6 +700,21 @@ const DeliveryManagerDashboard = () => {
       </div>
     </div>
   );
+
+  // Fetch all delivery details for the manager
+  const fetchAllDeliveryDetails = async () => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      if (!token) return;
+      const response = await axios.get('http://localhost:5000/api/delivery/manager/delivery-details', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDeliveryDetails(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error fetching all delivery details:', error);
+      toast.error('Failed to fetch delivery details history.');
+    }
+  };
 
   if (loading) {
     return (
@@ -914,6 +927,55 @@ const DeliveryManagerDashboard = () => {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Delivery Details History Table */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden mt-10">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800">Delivery Details History</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Person</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Cost</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mileage</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Petrol Cost</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Spent</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted At</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {deliveryDetails.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-gray-500">No delivery details found.</td>
+                  </tr>
+                ) : (
+                  deliveryDetails.map((detail) => (
+                    <tr key={detail._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {typeof detail.orderId === 'object'
+                          ? detail.orderId.orderNumber || detail.orderId._id || '-'
+                          : detail.orderId || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {typeof detail.deliveryPersonId === 'object'
+                          ? detail.deliveryPersonId.name || detail.deliveryPersonId._id || '-'
+                          : detail.deliveryPersonId || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {detail.deliveryCost?.toFixed(2) ?? '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{detail.mileage?.toFixed(1) ?? '-'} km</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {detail.petrolCost?.toFixed(2) ?? '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{detail.timeSpent?.toFixed(1) ?? '-'} hours</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{detail.submittedAt ? new Date(detail.submittedAt).toLocaleString() : '-'}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
