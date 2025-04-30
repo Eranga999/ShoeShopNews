@@ -385,49 +385,85 @@ const DeliveryPersonDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-gray-50 font-sans">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header with Profile Toggle */}
-                <div className="mb-8 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">My Deliveries</h1>
-                        <p className="mt-2 text-gray-600">Welcome back, {profile?.name}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => setShowProfile(!showProfile)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                            <FiUser className="text-lg" />
-                            {showProfile ? 'Hide Profile' : 'View Profile'}
-                        </button>
-                        <button
-                            onClick={fetchAssignedOrders}
-                            className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
-                        >
-                            <FiRefreshCw className="text-lg" />
-                            Refresh Orders
-                        </button>
-                        <button
-                            onClick={fetchDeliveryDetails}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                        >
-                            <FiRefreshCw className="text-lg" />
-                            Refresh Details
-                        </button>
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                        >
-                            <FiLogOut className="text-lg" />
-                            Logout
-                        </button>
+                {/* Profile and Stats Section */}
+                <div className="mb-10">
+                    <h1 className="text-4xl font-extrabold text-gray-900 mb-2">My Deliveries</h1>
+                    <p className="text-lg text-gray-600 mb-6">Welcome back, <span className="font-semibold text-blue-700">{profile?.name}</span></p>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div className="bg-white rounded-2xl shadow p-6 flex items-center gap-4">
+                            <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                <FiPackage size={28} />
+                            </div>
+                            <div>
+                                <p className="text-md text-gray-500">Pending</p>
+                                <p className="text-3xl font-bold text-gray-900">{deliveryStats.pendingDeliveries}</p>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-2xl shadow p-6 flex items-center gap-4">
+                            <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                                <FiTruck size={28} />
+                            </div>
+                            <div>
+                                <p className="text-md text-gray-500">In Transit</p>
+                                <p className="text-3xl font-bold text-gray-900">{deliveryStats.inTransit}</p>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-2xl shadow p-6 flex items-center gap-4">
+                            <div className="p-3 rounded-full bg-green-100 text-green-600">
+                                <FiCheck size={28} />
+                            </div>
+                            <div>
+                                <p className="text-md text-gray-500">Completed</p>
+                                <p className="text-3xl font-bold text-gray-900">{deliveryStats.completed}</p>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-2xl shadow p-6 flex items-center gap-4">
+                            <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                                <FiCalendar size={28} />
+                            </div>
+                            <div>
+                                <p className="text-md text-gray-500">Total</p>
+                                <p className="text-3xl font-bold text-gray-900">{deliveryStats.totalDeliveries}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-4 mb-8">
+                    <button
+                        onClick={() => setShowProfile(!showProfile)}
+                        className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow transition"
+                    >
+                        <FiUser className="text-lg" />
+                        {showProfile ? 'Hide Profile' : 'View Profile'}
+                    </button>
+                    <button
+                        onClick={fetchAssignedOrders}
+                        className="flex items-center gap-2 px-5 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 font-semibold shadow transition"
+                    >
+                        <FiRefreshCw className="text-lg" />
+                        Refresh Orders
+                    </button>
+                    <button
+                        onClick={fetchDeliveryDetails}
+                        className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold shadow transition"
+                    >
+                        <FiRefreshCw className="text-lg" />
+                        Refresh Details
+                    </button>
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold shadow transition"
+                    >
+                        <FiLogOut className="text-lg" />
+                        Logout
+                    </button>
+                </div>
                 {/* Profile Section */}
                 {showProfile && profile && (
-                    <div className="mb-8 bg-white rounded-lg shadow-md p-6">
+                    <div className="mb-8 bg-white rounded-2xl shadow-md p-6">
                         <h2 className="text-2xl font-bold mb-4">Profile Information</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="flex items-center gap-3">
@@ -475,60 +511,8 @@ const DeliveryPersonDashboard = () => {
                         </div>
                     </div>
                 )}
-
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center">
-                            <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                                <FiPackage size={24} />
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm text-gray-500">Pending</p>
-                                <p className="text-2xl font-semibold text-gray-900">{deliveryStats.pendingDeliveries}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center">
-                            <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                                <FiTruck size={24} />
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm text-gray-500">In Transit</p>
-                                <p className="text-2xl font-semibold text-gray-900">{deliveryStats.inTransit}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center">
-                            <div className="p-3 rounded-full bg-green-100 text-green-600">
-                                <FiCheck size={24} />
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm text-gray-500">Completed</p>
-                                <p className="text-2xl font-semibold text-gray-900">{deliveryStats.completed}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center">
-                            <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-                                <FiCalendar size={24} />
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm text-gray-500">Total</p>
-                                <p className="text-2xl font-semibold text-gray-900">{deliveryStats.totalDeliveries}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Orders Table */}
-                <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="bg-white rounded-2xl shadow-md p-6 mb-10">
                     <h2 className="text-xl font-bold mb-4">Assigned Orders</h2>
                     {orders.length === 0 ? (
                         <div className="text-center py-8">
@@ -537,154 +521,165 @@ const DeliveryPersonDashboard = () => {
                             <p className="mt-1 text-sm text-gray-500">You don't have any orders assigned yet.</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
+                        <div className="relative">
+                            <div className="overflow-x-auto max-h-[500px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 overflow-y-auto" style={{
+                                scrollbarWidth: 'thin',
+                                scrollbarColor: '#D1D5DB #F3F4F6',
+                                msOverflowStyle: '-ms-autohiding-scrollbar'
+                            }}>
+                                <table className="min-w-full divide-y divide-gray-200 table-fixed">
+                                    <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Order ID</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Customer</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Address</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Items</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {orders.map((order, idx) => (
+                                            <tr key={order._id} className={idx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'}>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {order._id.substring(0, 8)}...
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
+                                                    <div className="text-sm text-gray-500">{order.customerEmail}</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                    {order.shippingAddress}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                    {order.items?.map((item, index) => (
+                                                        <div key={index} className="mb-1">
+                                                            {item.quantity}x {item.product?.name || 'Product'}
+                                                        </div>
+                                                    ))}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                        order.deliveryStatus === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                                                        order.deliveryStatus === 'pickedup' ? 'bg-blue-100 text-blue-800' :
+                                                        order.deliveryStatus === 'delivered' ? 'bg-green-100 text-green-800' :
+                                                        'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                        {order.deliveryStatus.charAt(0).toUpperCase() + order.deliveryStatus.slice(1)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <div className="flex space-x-2">
+                                                        <select
+                                                            value={order.deliveryStatus}
+                                                            onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                                                            className="block p-2 rounded-md border border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                                        >
+                                                            <option value="processing">Processing</option>
+                                                            <option value="pickedup">Picked Up</option>
+                                                            <option value="delivered">Delivered</option>
+                                                        </select>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedOrder(order);
+                                                                setShowOrderDetails(true);
+                                                            }}
+                                                            className="text-blue-600 hover:text-blue-900"
+                                                            title="View Order Details"
+                                                        >
+                                                            <FiAlertCircle className="w-5 h-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedOrderForDetails(order);
+                                                                setShowDeliveryForm(true);
+                                                            }}
+                                                            className="text-green-600 hover:text-green-900"
+                                                            title="Submit Delivery Details"
+                                                        >
+                                                            <FiTruck className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                {/* Delivery Details Table */}
+                <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                        <h2 className="text-xl font-semibold text-gray-800">Delivery History</h2>
+                    </div>
+                    <div className="relative">
+                        <div className="overflow-x-auto max-h-[500px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 overflow-y-auto" style={{
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: '#D1D5DB #F3F4F6',
+                            msOverflowStyle: '-ms-autohiding-scrollbar'
+                        }}>
+                            <table className="min-w-full divide-y divide-gray-200 table-fixed">
+                                <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Order ID</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Date</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Delivery Cost</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Mileage</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Petrol Cost</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Time Spent</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {orders.map((order) => (
-                                        <tr key={order._id} className="hover:bg-gray-50">
+                                    {deliveryDetails.map((detail, idx) => (
+                                        <tr key={detail.orderId} className={idx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'}>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {order._id.substring(0, 8)}...
+                                                {detail.orderId.substring(0, 8)}...
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {detail.submittedAt ? new Date(detail.submittedAt).toLocaleDateString() : ''}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                Rs. {detail.deliveryCost.toFixed(2)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {detail.mileage.toFixed(1)} km
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                Rs. {detail.petrolCost.toFixed(2)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {detail.timeSpent.toFixed(1)} hours
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
-                                                <div className="text-sm text-gray-500">{order.customerEmail}</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">
-                                                {order.shippingAddress}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">
-                                                {order.items?.map((item, index) => (
-                                                    <div key={index} className="mb-1">
-                                                        {item.quantity}x {item.product?.name || 'Product'}
-                                                    </div>
-                                                ))}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                    order.deliveryStatus === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                                                    order.deliveryStatus === 'pickedup' ? 'bg-blue-100 text-blue-800' :
-                                                    order.deliveryStatus === 'delivered' ? 'bg-green-100 text-green-800' :
-                                                    'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                    {order.deliveryStatus.charAt(0).toUpperCase() + order.deliveryStatus.slice(1)}
+                                                <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Completed
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <div className="flex space-x-2">
-                                                    <select
-                                                        value={order.deliveryStatus}
-                                                        onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                                                        className="block p-2 rounded-md border border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                    >
-                                                        <option value="processing">Processing</option>
-                                                        <option value="pickedup">Picked Up</option>
-                                                        <option value="delivered">Delivered</option>
-                                                    </select>
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedOrder(order);
-                                                            setShowOrderDetails(true);
-                                                        }}
-                                                        className="text-blue-600 hover:text-blue-900"
-                                                        title="View Order Details"
-                                                    >
-                                                        <FiAlertCircle className="w-5 h-5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedOrderForDetails(order);
-                                                            setShowDeliveryForm(true);
-                                                        }}
-                                                        className="text-green-600 hover:text-green-900"
-                                                        title="Submit Delivery Details"
-                                                    >
-                                                        <FiTruck className="w-5 h-5" />
-                                                    </button>
-                                                </div>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
+                                                <button
+                                                    onClick={() => handleEditDeliveryDetail(detail)}
+                                                    className="text-blue-600 hover:text-blue-900 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                                    title="Edit"
+                                                >
+                                                    <FiEdit className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteDeliveryDetail(detail)}
+                                                    className="text-red-600 hover:text-red-900 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-red-300"
+                                                    title="Delete"
+                                                >
+                                                    <FiTrash2 className="w-5 h-5" />
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
-                    )}
-                </div>
-
-                {/* Delivery Details Table */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                        <h2 className="text-xl font-semibold text-gray-800">Delivery History</h2>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Cost</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mileage</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Petrol Cost</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Spent</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {deliveryDetails.map((detail) => (
-                                    <tr key={detail.orderId} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {detail.orderId.substring(0, 8)}...
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {detail.submittedAt ? new Date(detail.submittedAt).toLocaleDateString() : ''}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            Rs. {detail.deliveryCost.toFixed(2)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {detail.mileage.toFixed(1)} km
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            Rs. {detail.petrolCost.toFixed(2)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {detail.timeSpent.toFixed(1)} hours
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                Completed
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
-                                            <button
-                                                onClick={() => handleEditDeliveryDetail(detail)}
-                                                className="text-blue-600 hover:text-blue-900 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                                title="Edit"
-                                            >
-                                                <FiEdit className="w-5 h-5" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteDeliveryDetail(detail)}
-                                                className="text-red-600 hover:text-red-900 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-red-300"
-                                                title="Delete"
-                                            >
-                                                <FiTrash2 className="w-5 h-5" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
                     </div>
                     {deliveryDetails.length === 0 && (
                         <div className="text-center py-8">
@@ -695,47 +690,50 @@ const DeliveryPersonDashboard = () => {
                     )}
                 </div>
             </div>
-
             {/* Order Details Modal */}
             {showOrderDetails && <OrderDetailsModal />}
-
             {/* Delivery Details Form Modal */}
             {showDeliveryForm && selectedOrderForDetails && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-                    <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full m-4">
-                        <DeliveryDetailsForm
-                            orderId={selectedOrderForDetails._id}
-                            onSubmit={handleDeliveryDetailsSubmit}
-                            onClose={() => {
-                                setShowDeliveryForm(false);
-                                setSelectedOrderForDetails(null);
-                            }}
-                        />
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[1000] backdrop-blur-sm">
+                    <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full m-4 z-[1001]">
+                        <div className="bg-white rounded-lg shadow-xl p-6">
+                            <h2 className="text-2xl font-bold mb-6">Submit Delivery Details</h2>
+                            <DeliveryDetailsForm
+                                orderId={selectedOrderForDetails._id}
+                                onSubmit={handleDeliveryDetailsSubmit}
+                                onClose={() => {
+                                    setShowDeliveryForm(false);
+                                    setSelectedOrderForDetails(null);
+                                }}
+                                initialValues={editDetail}
+                            />
+                        </div>
                     </div>
                 </div>
             )}
-
             {/* Edit Delivery Details Modal */}
             {showEditForm && editDetail && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-                    <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full m-4">
-                        <DeliveryDetailsForm
-                            orderId={editDetail.orderId}
-                            onSubmit={handleUpdateDeliveryDetail}
-                            onClose={() => {
-                                setShowEditForm(false);
-                                setEditDetail(null);
-                            }}
-                            initialValues={editDetail}
-                        />
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[1000] backdrop-blur-sm">
+                    <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full m-4 z-[1001]">
+                        <div className="bg-white rounded-lg shadow-xl p-6">
+                            <h2 className="text-2xl font-bold mb-6">Edit Delivery Details</h2>
+                            <DeliveryDetailsForm
+                                orderId={editDetail.orderId}
+                                onSubmit={handleUpdateDeliveryDetail}
+                                onClose={() => {
+                                    setShowEditForm(false);
+                                    setEditDetail(null);
+                                }}
+                                initialValues={editDetail}
+                            />
+                        </div>
                     </div>
                 </div>
             )}
-
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && deleteDetail && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg shadow-lg p-8 max-w-sm w-full">
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-[1000] backdrop-blur-sm">
+                    <div className="bg-white rounded-lg shadow-xl p-8 max-w-sm w-full z-[1001]">
                         <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
                         <p className="mb-6">Are you sure you want to delete this delivery detail?</p>
                         <div className="flex justify-end gap-3">

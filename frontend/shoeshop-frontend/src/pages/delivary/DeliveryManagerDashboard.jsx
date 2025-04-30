@@ -461,8 +461,8 @@ const DeliveryManagerDashboard = () => {
   };
 
   const DeliveryPersonsModal = () => (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-      <div className="bg-white p-8 rounded-xl shadow-2xl max-w-6xl w-full mx-4">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[9999] backdrop-blur-sm">
+      <div className="relative bg-white p-8 rounded-xl shadow-2xl max-w-6xl w-full mx-4 z-[10000]">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-800">Delivery Persons</h2>
@@ -639,13 +639,13 @@ const DeliveryManagerDashboard = () => {
 
   // Add the DeliveryDetailsModal component
   const DeliveryDetailsModal = () => (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[9999] backdrop-blur-sm">
+      <div className="relative bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full m-4 z-[10000]">
         <div className="flex justify-between items-start mb-6">
-          <h2 className="text-2xl font-bold">Delivery Details</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Delivery Details</h2>
           <button
             onClick={() => setShowDeliveryDetails(false)}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
           >
             <FiX className="w-6 h-6" />
           </button>
@@ -653,55 +653,75 @@ const DeliveryManagerDashboard = () => {
         {selectedDeliveryDetails ? (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
-              <div className="flex items-center gap-3">
-                <FiDollarSign className="text-blue-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Delivery Cost</p>
-                  <p className="font-medium">Rs. {selectedDeliveryDetails.deliveryCost}</p>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <FiDollarSign className="text-blue-500 w-5 h-5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Delivery Cost</p>
+                    <p className="font-medium text-gray-900">Rs. {selectedDeliveryDetails.deliveryCost}</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <FiTruck className="text-blue-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Mileage</p>
-                  <p className="font-medium">{selectedDeliveryDetails.mileage} km</p>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <FiTruck className="text-blue-500 w-5 h-5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Mileage</p>
+                    <p className="font-medium text-gray-900">{selectedDeliveryDetails.mileage} km</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <FiDroplet className="text-blue-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Petrol Cost</p>
-                  <p className="font-medium">Rs. {selectedDeliveryDetails.petrolCost}</p>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <FiDroplet className="text-blue-500 w-5 h-5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Petrol Cost</p>
+                    <p className="font-medium text-gray-900">Rs. {selectedDeliveryDetails.petrolCost}</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <FiClock className="text-blue-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Time Spent</p>
-                  <p className="font-medium">{selectedDeliveryDetails.timeSpent} hours</p>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <FiClock className="text-blue-500 w-5 h-5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Time Spent</p>
+                    <p className="font-medium text-gray-900">{selectedDeliveryDetails.timeSpent} hours</p>
+                  </div>
                 </div>
               </div>
             </div>
             {selectedDeliveryDetails.additionalNotes && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-500">Additional Notes</p>
-                <p className="mt-1 text-gray-700">{selectedDeliveryDetails.additionalNotes}</p>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-500 mb-2">Additional Notes</p>
+                <p className="text-gray-700">{selectedDeliveryDetails.additionalNotes}</p>
               </div>
             )}
             {selectedDeliveryDetails.submittedAt && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-500">Submitted At</p>
-                <p className="mt-1 text-gray-700">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-500 mb-2">Submitted At</p>
+                <p className="text-gray-700">
                   {new Date(selectedDeliveryDetails.submittedAt).toLocaleString()}
                 </p>
               </div>
             )}
           </div>
         ) : (
-          <div className="text-center py-4">
-            <p className="text-gray-500">No delivery details available</p>
+          <div className="text-center py-8">
+            <div className="mx-auto h-12 w-12 text-gray-400">
+              <FiInfo className="w-full h-full" />
+            </div>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No Details Available</h3>
+            <p className="mt-1 text-sm text-gray-500">No delivery details have been submitted for this order yet.</p>
           </div>
         )}
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={() => setShowDeliveryDetails(false)}
+            className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -903,103 +923,105 @@ const DeliveryManagerDashboard = () => {
           </div>
 
           {/* Orders Table */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Person</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredOrders.map((order) => (
-                  <tr key={order._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order._id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.customerName}<br/>
-                      <span className="text-gray-500">{order.customerEmail}</span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{order.shippingAddress}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.deliveryStatus)}`}>
-                        {(order.deliveryStatus || 'processing').charAt(0).toUpperCase() + (order.deliveryStatus || 'processing').slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <select 
-                        value={order.deliveryPerson?._id || ''}
-                        onChange={(e) => handleAssignDeliveryPerson(order._id, e.target.value)}
-                        className="block w-full p-2 rounded-md border-gray-300 text-gray-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                      >
-                        <option value="">Select Delivery Person</option>
-                        {deliveryPersons.map((person) => (
-                          <option key={person._id} value={person._id}>
-                            {person.name}
-                          </option>
-                        ))}
-                      </select>
-                      {order.deliveryPerson && (
-                        <div className="mt-1 text-sm text-gray-500">
-                          Assigned: {order.deliveryPerson.name}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      Rs.{order.totalPrice.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setShowStatusModal(true);
-                          }}
-                          className="text-yellow-600 hover:text-yellow-900"
-                          title="Update Status"
-                        >
-                          <FiRefreshCw className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setShowDetailsModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="View Order Details"
-                        >
-                          <FiClipboard className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (!order._id) {
-                                toast.error('Invalid order ID');
-                                return;
-                            }
-                            fetchDeliveryDetails(order._id);
-                          }}
-                          className="text-green-600 hover:text-green-900"
-                          title="View Delivery Details"
-                          disabled={!order._id}
-                        >
-                          <FiInfo className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </td>
+          <div className="relative">
+            <div className="overflow-x-auto max-h-[500px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <table className="min-w-full divide-y divide-gray-200 table-fixed">
+                <thead className="bg-gray-50 sticky top-0 z-[2] shadow-sm">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Order ID</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Customer</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Address</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Status</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Delivery Person</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Total</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredOrders.map((order) => (
+                    <tr key={order._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order._id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {order.customerName}<br/>
+                        <span className="text-gray-500">{order.customerEmail}</span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{order.shippingAddress}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.deliveryStatus)}`}>
+                          {(order.deliveryStatus || 'processing').charAt(0).toUpperCase() + (order.deliveryStatus || 'processing').slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <select 
+                          value={order.deliveryPerson?._id || ''}
+                          onChange={(e) => handleAssignDeliveryPerson(order._id, e.target.value)}
+                          className="block w-full p-2 rounded-md border-gray-300 text-gray-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                        >
+                          <option value="">Select Delivery Person</option>
+                          {deliveryPersons.map((person) => (
+                            <option key={person._id} value={person._id}>
+                              {person.name}
+                            </option>
+                          ))}
+                        </select>
+                        {order.deliveryPerson && (
+                          <div className="mt-1 text-sm text-gray-500">
+                            Assigned: {order.deliveryPerson.name}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        Rs.{order.totalPrice.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setShowStatusModal(true);
+                            }}
+                            className="text-yellow-600 hover:text-yellow-900"
+                            title="Update Status"
+                          >
+                            <FiRefreshCw className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setShowDetailsModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="View Order Details"
+                          >
+                            <FiClipboard className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!order._id) {
+                                  toast.error('Invalid order ID');
+                                  return;
+                              }
+                              fetchDeliveryDetails(order._id);
+                            }}
+                            className="text-green-600 hover:text-green-900"
+                            title="View Delivery Details"
+                            disabled={!order._id}
+                          >
+                            <FiInfo className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
         {/* Delivery Details History Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden mt-10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between px-6 py-4 border-b border-gray-200 gap-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between px-6 py-4 border-b border-gray-200 gap-4 bg-white">
             <h2 className="text-xl font-semibold text-gray-800">Delivery Details History</h2>
             <div className="flex flex-col md:flex-row md:items-center gap-2 w-full md:w-auto">
               <input
@@ -1011,53 +1033,88 @@ const DeliveryManagerDashboard = () => {
               />
               <button
                 onClick={handleDownloadPDF}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-semibold shadow-sm"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-semibold shadow-sm whitespace-nowrap"
               >
                 Download PDF
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 sticky top-0 z-10">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Person</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Cost</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mileage</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Petrol Cost</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Spent</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted At</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredDeliveryDetails.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-8 text-gray-500">No delivery details found.</td>
+          <div className="relative">
+            <div className="overflow-x-auto" style={{
+              maxHeight: 'calc(100vh - 400px)',
+              minHeight: '200px'
+            }}>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead>
+                  <tr className="bg-white">
+                    <th scope="col" className="sticky top-0 px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider bg-white shadow-sm z-[1]">
+                      Order ID
+                    </th>
+                    <th scope="col" className="sticky top-0 px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider bg-white shadow-sm z-[1]">
+                      Delivery Person
+                    </th>
+                    <th scope="col" className="sticky top-0 px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider bg-white shadow-sm z-[1]">
+                      Delivery Cost
+                    </th>
+                    <th scope="col" className="sticky top-0 px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider bg-white shadow-sm z-[1]">
+                      Mileage
+                    </th>
+                    <th scope="col" className="sticky top-0 px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider bg-white shadow-sm z-[1]">
+                      Petrol Cost
+                    </th>
+                    <th scope="col" className="sticky top-0 px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider bg-white shadow-sm z-[1]">
+                      Time Spent
+                    </th>
+                    <th scope="col" className="sticky top-0 px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider bg-white shadow-sm z-[1]">
+                      Submitted At
+                    </th>
                   </tr>
-                ) : (
-                  filteredDeliveryDetails.map((detail, idx) => (
-                    <tr key={detail._id} className={idx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {typeof detail.orderId === 'object'
-                          ? detail.orderId.orderNumber || detail.orderId._id || '-'
-                          : detail.orderId || '-'}
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredDeliveryDetails.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500 bg-gray-50">
+                        <div className="flex flex-col items-center justify-center">
+                          <FiPackage className="w-8 h-8 mb-2 text-gray-400" />
+                          <p className="text-sm font-medium">No delivery details found</p>
+                          <p className="text-xs text-gray-400">Try adjusting your search criteria</p>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {typeof detail.deliveryPersonId === 'object'
-                          ? detail.deliveryPersonId.name || detail.deliveryPersonId._id || '-'
-                          : detail.deliveryPersonId || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {detail.deliveryCost?.toFixed(2) ?? '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{detail.mileage?.toFixed(1) ?? '-'} km</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {detail.petrolCost?.toFixed(2) ?? '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{detail.timeSpent?.toFixed(1) ?? '-'} hours</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{detail.submittedAt ? new Date(detail.submittedAt).toLocaleString() : '-'}</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredDeliveryDetails.map((detail, idx) => (
+                      <tr key={detail._id || idx} className={idx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {typeof detail.orderId === 'object'
+                            ? detail.orderId.orderNumber || detail.orderId._id || '-'
+                            : detail.orderId || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {typeof detail.deliveryPersonId === 'object'
+                            ? detail.deliveryPersonId.name || detail.deliveryPersonId._id || '-'
+                            : detail.deliveryPersonId || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          Rs. {detail.deliveryCost?.toFixed(2) ?? '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {detail.mileage?.toFixed(1) ?? '-'} km
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          Rs. {detail.petrolCost?.toFixed(2) ?? '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {detail.timeSpent?.toFixed(1) ?? '-'} hours
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {detail.submittedAt ? new Date(detail.submittedAt).toLocaleString() : '-'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </main>
@@ -1065,8 +1122,8 @@ const DeliveryManagerDashboard = () => {
 
       {/* Order Details Modal */}
       {showDetailsModal && selectedOrder && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[9999] backdrop-blur-sm">
+          <div className="relative bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full m-4 z-[10000]">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-xl font-bold">Order Details</h2>
               <button
@@ -1132,8 +1189,8 @@ const DeliveryManagerDashboard = () => {
 
       {/* Status Update Modal */}
       {showStatusModal && selectedOrder && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[9999] backdrop-blur-sm">
+          <div className="relative bg-white p-8 rounded-lg shadow-xl max-w-md w-full m-4 z-[10000]">
             <h2 className="text-xl font-bold mb-4">Update Order Status</h2>
             <div className="mb-4">
               <p><strong>Order ID:</strong> {selectedOrder._id}</p>
