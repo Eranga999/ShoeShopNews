@@ -40,16 +40,7 @@ const DeliveryManagerDashboard = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [showAddDeliveryPersonModal, setShowAddDeliveryPersonModal] = useState(false);
   const [showDeliveryPersonsModal, setShowDeliveryPersonsModal] = useState(false);
-  const [newDeliveryPerson, setNewDeliveryPerson] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    vehicleNumber: '',
-    licenseNumber: '',
-    password: ''
-  });
   const [showDeliveryDetails, setShowDeliveryDetails] = useState(false);
   const [selectedDeliveryDetails, setSelectedDeliveryDetails] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -457,84 +448,125 @@ const DeliveryManagerDashboard = () => {
 
   const DeliveryPersonsModal = () => (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-xl max-w-4xl w-full">
-        <div className="flex justify-between items-start mb-6">
-          <h2 className="text-2xl font-bold">Delivery Persons</h2>
+      <div className="bg-white p-8 rounded-xl shadow-2xl max-w-6xl w-full mx-4">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-800">Delivery Persons</h2>
+            <p className="text-gray-500 mt-1">Manage your delivery team members</p>
+          </div>
           <button
             onClick={() => setShowDeliveryPersonsModal(false)}
-            className="text-gray-500 hover:text-gray-700"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
           >
-            <FiX className="w-6 h-6" />
+            <FiX className="w-6 h-6 text-gray-500" />
           </button>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">License</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Orders</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {deliveryPersons.map((person) => {
-                const personOrders = orders.filter(order => order.deliveryPerson?._id === person._id);
-                const activeOrders = personOrders.filter(order => order.deliveryStatus !== 'delivered' && order.deliveryStatus !== 'cancelled');
-                
-                return (
-                  <tr key={person._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{person.name}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{person.phone}</div>
-                      <div className="text-sm text-gray-500">{person.email}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {person.vehicleNumber}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {person.licenseNumber}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        person.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {person.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        Active: {activeOrders.length}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        Total: {personOrders.length}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        onClick={() => {
-                          if (window.confirm('Are you sure you want to delete this delivery person?')) {
-                            handleDeleteDeliveryPerson(person._id);
-                          }
-                        }}
-                        disabled={isDeleting || activeOrders.length > 0}
-                        className={`text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed`}
-                        title={activeOrders.length > 0 ? "Cannot delete: Has active orders" : "Delete delivery person"}
-                      >
-                        <FiTrash2 className="w-5 h-5" />
-                      </button>
-                    </td>
+          <div className="inline-block min-w-full align-middle">
+            <div className="overflow-hidden border border-gray-200 rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Contact Info
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Vehicle
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      License
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Orders
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {deliveryPersons.map((person) => {
+                    const personOrders = orders.filter(order => order.deliveryPerson?._id === person._id);
+                    const activeOrders = personOrders.filter(order => order.deliveryStatus !== 'delivered' && order.deliveryStatus !== 'cancelled');
+                    
+                    return (
+                      <tr key={person._id} className="hover:bg-gray-50 transition-colors duration-200">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 flex-shrink-0">
+                              <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                <span className="text-indigo-600 font-semibold text-lg">
+                                  {person.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{person.name}</div>
+                              <div className="text-sm text-gray-500">{person.email}</div>
+                              <div className="text-sm text-gray-500">{person.phone}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{person.vehicleNumber}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{person.licenseNumber}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            person.status === 'active' 
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            <span className={`h-2 w-2 mr-2 rounded-full ${
+                              person.status === 'active' 
+                                ? 'bg-green-400'
+                                : 'bg-red-400'
+                            }`}></span>
+                            {person.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <div className="text-sm font-medium text-gray-900">
+                              Active: {activeOrders.length}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Total: {personOrders.length}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to delete this delivery person?')) {
+                                handleDeleteDeliveryPerson(person._id);
+                              }
+                            }}
+                            disabled={isDeleting || activeOrders.length > 0}
+                            className={`inline-flex items-center px-3 py-1 border border-transparent rounded-md ${
+                              activeOrders.length > 0
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-red-50 text-red-600 hover:bg-red-100'
+                            }`}
+                            title={activeOrders.length > 0 ? "Cannot delete: Has active orders" : "Delete delivery person"}
+                          >
+                            <FiTrash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -685,13 +717,6 @@ const DeliveryManagerDashboard = () => {
             >
               <FiUsers className="text-lg" />
               View Delivery Persons
-            </button>
-            <button
-              onClick={() => setShowAddDeliveryPersonModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <FiUserPlus className="text-lg" />
-              Add Delivery Person
             </button>
             <button
               onClick={fetchOrders}
@@ -995,90 +1020,6 @@ const DeliveryManagerDashboard = () => {
                 Cancel
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Delivery Person Modal */}
-      {showAddDeliveryPersonModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-xl font-bold">Add New Delivery Person</h2>
-              <button
-                onClick={() => setShowAddDeliveryPersonModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleAddDeliveryPerson} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
-                <input
-                  type="text"
-                  value={newDeliveryPerson.name}
-                  onChange={(e) => setNewDeliveryPerson({...newDeliveryPerson, name: e.target.value})}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input
-                  type="email"
-                  value={newDeliveryPerson.email}
-                  onChange={(e) => setNewDeliveryPerson({...newDeliveryPerson, email: e.target.value})}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Phone</label>
-                <input
-                  type="tel"
-                  value={newDeliveryPerson.phone}
-                  onChange={(e) => setNewDeliveryPerson({...newDeliveryPerson, phone: e.target.value})}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Vehicle Number</label>
-                <input
-                  type="text"
-                  value={newDeliveryPerson.vehicleNumber}
-                  onChange={(e) => setNewDeliveryPerson({...newDeliveryPerson, vehicleNumber: e.target.value})}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">License Number</label>
-                <input
-                  type="text"
-                  value={newDeliveryPerson.licenseNumber}
-                  onChange={(e) => setNewDeliveryPerson({...newDeliveryPerson, licenseNumber: e.target.value})}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
-                  required
-                />
-              </div>
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowAddDeliveryPersonModal(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Add Delivery Person
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
