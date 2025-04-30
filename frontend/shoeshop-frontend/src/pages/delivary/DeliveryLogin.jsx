@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
     Container,
     Box,
@@ -12,7 +12,7 @@ import {
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-const DeliveryManagerLogin = () => {
+const DeliveryLogin = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -21,19 +21,42 @@ const DeliveryManagerLogin = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:5000/api/delivery-manager/login', {
+            // First clear any existing tokens
+            localStorage.removeItem('deliveryPersonToken');
+            
+            const response = await axios.post('http://localhost:5000/api/delivery/delivery-person/login', {
                 email,
                 password
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
 
-            if (response.data.token) {
-                localStorage.setItem('deliveryManagerToken', response.data.token);
+            console.log('Login response:', response.data); // For debugging
+
+            if (response.data && response.data.token) {
+                // Store the token
+                localStorage.setItem('deliveryPersonToken', response.data.token);
                 toast.success('Login successful!');
-                navigate('/delivery-dashboard');
+                
+                // Verify token is stored
+                const storedToken = localStorage.getItem('deliveryPersonToken');
+                console.log('Stored token:', storedToken); // For debugging
+                
+                if (storedToken) {
+                    navigate('/delivery-person-dashboard');
+                } else {
+                    throw new Error('Token storage failed');
+                }
+            } else {
+                throw new Error('No token received from server');
             }
         } catch (error) {
-            setError(error.response?.data?.message || 'Login failed');
-            toast.error(error.response?.data?.message || 'Login failed');
+            console.error('Login error:', error); // For debugging
+            const errorMessage = error.response?.data?.message || error.message || 'Login failed';
+            setError(errorMessage);
+            toast.error(errorMessage);
         }
     };
 
@@ -50,7 +73,7 @@ const DeliveryManagerLogin = () => {
                 >
                     <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
                         <Typography component="h1" variant="h5" align="center" gutterBottom>
-                            Delivery Manager Login
+                            Delivery Person Login
                         </Typography>
                         {error && (
                             <Alert severity="error" sx={{ mb: 2 }}>
@@ -91,6 +114,11 @@ const DeliveryManagerLogin = () => {
                             >
                                 Sign In
                             </Button>
+                            <Box sx={{ textAlign: 'center' }}>
+                                <Link to="/delivery-signup" className="text-blue-600 hover:text-blue-800">
+                                    Don't have an account? Sign Up
+                                </Link>
+                            </Box>
                         </Box>
                     </Paper>
                 </Box>
@@ -99,4 +127,4 @@ const DeliveryManagerLogin = () => {
     );
 };
 
-export default DeliveryManagerLogin; 
+export default DeliveryLogin; 

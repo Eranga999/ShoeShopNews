@@ -12,7 +12,7 @@ import {
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-const DeliveryManagerLogin = () => {
+const DeliveryPersonLogin = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -20,20 +20,36 @@ const DeliveryManagerLogin = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        
         try {
-            const response = await axios.post('http://localhost:5000/api/delivery-manager/login', {
+            const response = await axios.post('http://localhost:5000/api/delivery/delivery-person/login', {
                 email,
                 password
             });
 
             if (response.data.token) {
-                localStorage.setItem('deliveryManagerToken', response.data.token);
+                // Store the token
+                localStorage.setItem('deliveryPersonToken', response.data.token);
+                
+                // Store user info if needed
+                localStorage.setItem('deliveryPersonInfo', JSON.stringify({
+                    id: response.data.deliveryPerson.id,
+                    name: response.data.deliveryPerson.name,
+                    email: response.data.deliveryPerson.email
+                }));
+
                 toast.success('Login successful!');
-                navigate('/delivery-dashboard');
+                navigate('/delivery-person-dashboard');
+            } else {
+                setError('Invalid login response');
+                toast.error('Login failed: Invalid response from server');
             }
         } catch (error) {
-            setError(error.response?.data?.message || 'Login failed');
-            toast.error(error.response?.data?.message || 'Login failed');
+            console.error('Login error:', error);
+            const errorMessage = error.response?.data?.message || 'Login failed';
+            setError(errorMessage);
+            toast.error(errorMessage);
         }
     };
 
@@ -50,7 +66,7 @@ const DeliveryManagerLogin = () => {
                 >
                     <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
                         <Typography component="h1" variant="h5" align="center" gutterBottom>
-                            Delivery Manager Login
+                            Delivery Person Login
                         </Typography>
                         {error && (
                             <Alert severity="error" sx={{ mb: 2 }}>
@@ -99,4 +115,4 @@ const DeliveryManagerLogin = () => {
     );
 };
 
-export default DeliveryManagerLogin; 
+export default DeliveryPersonLogin; 

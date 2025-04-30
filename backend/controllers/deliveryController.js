@@ -1,5 +1,6 @@
 import DeliveryPerson from '../modeles/DeliveryPerson.js';
 import { Order } from '../models/orderModel.js';
+import axios from 'axios';
 
 // Get all delivery persons
 export const getDeliveryPersons = async (req, res) => {
@@ -110,35 +111,77 @@ export const assignDeliveryPerson = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { deliveryPersonId } = req.body;
-    
-    // First, get the delivery person details
-    const deliveryPerson = await DeliveryPerson.findById(deliveryPersonId);
-    
-    if (!deliveryPerson) {
-      return res.status(404).json({ message: 'Delivery person not found' });
+
+    if (!orderId || !deliveryPersonId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order ID and Delivery Person ID are required'
+      });
     }
 
-    // Update order with delivery person details
-    const order = await Order.findByIdAndUpdate(
+    console.log('Starting assignment process:', {
       orderId,
-      { 
-        deliveryPerson: {
-          _id: deliveryPerson._id,
-          name: deliveryPerson.name,
-          email: deliveryPerson.email,
-          phone: deliveryPerson.phone
+      deliveryPersonId
+    });
+
+    // First, get the delivery person details
+    const deliveryPerson = await DeliveryPerson.findById(deliveryPersonId);
+    if (!deliveryPerson) {
+      return res.status(404).json({
+        success: false,
+        message: 'Delivery person not found'
+      });
+    }
+
+    console.log('Found delivery person:', {
+      id: deliveryPerson._id,
+      name: deliveryPerson.name
+    });
+
+    // Update order with delivery person details using findByIdAndUpdate
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      {
+        $set: {
+          deliveryPerson: {
+            _id: deliveryPerson._id,
+            name: deliveryPerson.name,
+            email: deliveryPerson.email,
+            phone: deliveryPerson.phone
+          },
+          deliveryStatus: 'processing'
         }
       },
-      { new: true }
+      { 
+        new: true, // Return the updated document
+        runValidators: false // Disable validation for this update
+      }
     );
-    
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+
+    if (!updatedOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
     }
-    
-    res.json({ message: 'Delivery person assigned successfully', order });
+
+    console.log('Order updated successfully:', {
+      orderId: updatedOrder._id,
+      deliveryPersonId: updatedOrder.deliveryPerson?._id,
+      status: updatedOrder.deliveryStatus
+    });
+
+    res.json({
+      success: true,
+      message: 'Delivery person assigned successfully',
+      order: updatedOrder
+    });
+
   } catch (error) {
     console.error('Error in assignDeliveryPerson:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to assign delivery person'
+    });
   }
 }; 

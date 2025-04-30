@@ -11,7 +11,10 @@ import {
   FiCheck, 
   FiX, 
   FiAlertCircle,
-  FiUserPlus
+  FiUserPlus,
+  FiPhone,
+  FiMail,
+  FiCreditCard
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -35,12 +38,14 @@ const DeliveryManagerDashboard = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showAddDeliveryPersonModal, setShowAddDeliveryPersonModal] = useState(false);
+  const [showDeliveryPersonsModal, setShowDeliveryPersonsModal] = useState(false);
   const [newDeliveryPerson, setNewDeliveryPerson] = useState({
     name: '',
     email: '',
     phone: '',
     vehicleNumber: '',
-    licenseNumber: ''
+    licenseNumber: '',
+    password: ''
   });
 
   useEffect(() => {
@@ -68,10 +73,18 @@ const DeliveryManagerDashboard = () => {
   const fetchDeliveryPersons = async () => {
     try {
       const token = localStorage.getItem('deliveryManagerToken');
-      const response = await axios.get('http://localhost:5000/api/delivery/delivery-persons', {
+      const response = await axios.get('http://localhost:5000/api/delivery/manager/delivery-persons', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setDeliveryPersons(response.data.deliveryPersons || []);
+      
+      const deliveryPersonsData = response.data.deliveryPersons || [];
+      setDeliveryPersons(deliveryPersonsData);
+      
+      // Update total drivers count in stats
+      setDeliveryStats(prev => ({
+        ...prev,
+        totalDrivers: deliveryPersonsData.length
+      }));
     } catch (error) {
       console.error('Error fetching delivery persons:', error);
       toast.error('Failed to fetch delivery persons. Please check your connection.');
@@ -183,6 +196,11 @@ const DeliveryManagerDashboard = () => {
 
   const handleAssignDeliveryPerson = async (orderId, deliveryPersonId) => {
     try {
+      if (!deliveryPersonId) {
+        toast.warning('Please select a delivery person');
+        return;
+      }
+
       const token = localStorage.getItem('deliveryManagerToken');
       if (!token) {
         navigate('/delivery-login');
@@ -196,39 +214,52 @@ const DeliveryManagerDashboard = () => {
         return;
       }
 
+      console.log('Assigning order:', orderId, 'to delivery person:', deliveryPersonId);
+
       // Assign delivery person to order
-      await axios.put(
-        `http://localhost:5000/api/delivery/orders/${orderId}/assign`,
-        { 
-          deliveryPersonId,
-          deliveryPerson: {
-            _id: selectedPerson._id,
-            name: selectedPerson.name,
-            email: selectedPerson.email,
-            phone: selectedPerson.phone
-          }
-        },
+      const response = await axios.put(
+        `http://localhost:5000/api/delivery/manager/orders/${orderId}/assign`,
+        { deliveryPersonId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Update orders state immediately
-      setOrders(prevOrders => prevOrders.map(order => {
-        if (order._id === orderId) {
-          return {
-            ...order,
-            deliveryPerson: selectedPerson
-          };
-        }
-        return order;
-      }));
+      if (response.data.success) {
+        // Update orders state immediately
+        setOrders(prevOrders => prevOrders.map(order => {
+          if (order._id === orderId) {
+            return {
+              ...order,
+              deliveryPerson: {
+                _id: selectedPerson._id,
+                name: selectedPerson.name,
+                email: selectedPerson.email,
+                phone: selectedPerson.phone
+              },
+              deliveryStatus: 'processing'
+            };
+          }
+          return order;
+        }));
 
-      toast.success('Delivery person assigned successfully');
+        // Update delivery stats
+        setDeliveryStats(prev => ({
+          ...prev,
+          pendingDeliveries: prev.pendingDeliveries + 1
+        }));
+
+        toast.success('Delivery person assigned successfully');
+        // Refresh the orders list to get updated data
+        fetchOrders();
+      } else {
+        throw new Error(response.data.message || 'Failed to assign delivery person');
+      }
     } catch (error) {
       console.error('Error assigning delivery person:', error);
       if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
         navigate('/delivery-login');
       } else {
-        toast.error('Failed to assign delivery person. Please try again.');
+        toast.error(error.response?.data?.message || 'Failed to assign delivery person. Please try again.');
       }
     }
   };
@@ -293,7 +324,8 @@ const DeliveryManagerDashboard = () => {
         email: '',
         phone: '',
         vehicleNumber: '',
-        licenseNumber: ''
+        licenseNumber: '',
+        password: ''
       });
       
       // Refresh delivery persons list
@@ -361,6 +393,76 @@ const DeliveryManagerDashboard = () => {
     }
   };
 
+  const DeliveryPersonsModal = () => (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+      <div className="bg-white p-8 rounded-lg shadow-xl max-w-4xl w-full">
+        <div className="flex justify-between items-start mb-6">
+          <h2 className="text-2xl font-bold">Delivery Persons</h2>
+          <button
+            onClick={() => setShowDeliveryPersonsModal(false)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">License</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Orders</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {deliveryPersons.map((person) => {
+                const personOrders = orders.filter(order => order.deliveryPerson?._id === person._id);
+                const activeOrders = personOrders.filter(order => order.deliveryStatus !== 'delivered' && order.deliveryStatus !== 'cancelled');
+                
+                return (
+                  <tr key={person._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">{person.name}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">{person.phone}</div>
+                      <div className="text-sm text-gray-500">{person.email}</div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {person.vehicleNumber}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {person.licenseNumber}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        person.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {person.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">
+                        Active: {activeOrders.length}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Total: {personOrders.length}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex justify-center items-center">
@@ -378,6 +480,13 @@ const DeliveryManagerDashboard = () => {
             <p className="mt-2 text-gray-600">Manage orders and delivery status</p>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowDeliveryPersonsModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              <FiUsers className="text-lg" />
+              View Delivery Persons
+            </button>
             <button
               onClick={() => setShowAddDeliveryPersonModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -760,6 +869,9 @@ const DeliveryManagerDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Delivery Persons Modal */}
+      {showDeliveryPersonsModal && <DeliveryPersonsModal />}
     </div>
   );
 };

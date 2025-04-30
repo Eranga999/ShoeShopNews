@@ -44,7 +44,10 @@ const orderSchema = new mongoose.Schema({
     default: 'processing'
   },
   deliveryPerson: {
-    _id: mongoose.Schema.Types.ObjectId,
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'DeliveryPerson'
+    },
     name: String,
     email: String,
     phone: String
@@ -52,6 +55,9 @@ const orderSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Add index for faster queries
+orderSchema.index({ 'deliveryPerson._id': 1 });
 
 // Check if the model exists before compiling it
 export const Order = mongoose.models.Order || mongoose.model('Order', orderSchema); 

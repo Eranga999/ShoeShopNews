@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 
 const NavBar2 = () => {
     const [visible,setVisible]=useState(false);
+    const [showDeliveryDropdown, setShowDeliveryDropdown] = useState(false);
 
     const {getCartCount} = useContext(ShopContext);
 
@@ -25,7 +26,9 @@ const NavBar2 = () => {
     
     return (
       <div className='flex items-center justify-between py-5 font-medium ml-10 mr-10 text-lg font-display'>
-        <Link to="/"><span className='text-xl w-36'><img src=''/> Shoe Paradise</span></Link>
+        <Link to="/">
+          <span className='text-xl w-36'>Shoe Paradise</span>
+        </Link>
 
         <ul className='hidden sm:flex gap-5 text-sm text-gray-700'>
           <NavLink to= '/'className="flex flex-col items-center gap-1">
@@ -59,13 +62,46 @@ const NavBar2 = () => {
                 >
                   Customer Login
                 </Link>
-                <Link 
-                  to="/delivery-login" 
-                  className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm hover:bg-blue-700 transition-colors duration-300 flex items-center gap-2"
-                >
-                  <FiTruck className="w-4" />
-                  <span>Delivery Login</span>
-                </Link>
+                <div className="relative">
+                  <button 
+                    className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm hover:bg-blue-700 transition-colors duration-300 flex items-center"
+                    onClick={() => setShowDeliveryDropdown(!showDeliveryDropdown)}
+                  >
+                    Delivery Login
+                    <svg 
+                      className="w-4 h-4 ml-2" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M19 9l-7 7-7-7" 
+                      />
+                    </svg>
+                  </button>
+
+                  {showDeliveryDropdown && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                      <Link 
+                        to="/delivery-login"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowDeliveryDropdown(false)}
+                      >
+                        Delivery Manager Login
+                      </Link>
+                      <Link 
+                        to="/delivery-person-login"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowDeliveryDropdown(false)}
+                      >
+                        Delivery Person Login
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <div className='group relative'>
@@ -104,7 +140,8 @@ const NavBar2 = () => {
             {!isAuthenticated && (
               <>
                 <NavLink onClick={()=>setVisible(false)} className="py-2 pl-6 border" to='/customerlogin'>CUSTOMER LOGIN</NavLink>
-                <NavLink onClick={()=>setVisible(false)} className="py-2 pl-6 border" to='/delivery-login'>DELIVERY LOGIN</NavLink>
+                <NavLink onClick={()=>setVisible(false)} className="py-2 pl-6 border" to='/delivery-login'>DELIVERY MANAGER LOGIN</NavLink>
+                <NavLink onClick={()=>setVisible(false)} className="py-2 pl-6 border" to='/delivery-person-login'>DELIVERY PERSON LOGIN</NavLink>
               </>
             )}
           </div>

@@ -3,12 +3,19 @@ import mongoose from 'mongoose';
 const deliveryPersonSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   email: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
+  password: {
+    type: String,
+    required: true
   },
   phone: {
     type: String,
@@ -33,4 +40,6 @@ const deliveryPersonSchema = new mongoose.Schema({
   }
 });
 
-export default mongoose.model('DeliveryPerson', deliveryPersonSchema); 
+// Check if the model exists before compiling it
+const DeliveryPerson = mongoose.models.DeliveryPerson || mongoose.model('DeliveryPerson', deliveryPersonSchema);
+export default DeliveryPerson; 
