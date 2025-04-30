@@ -18,7 +18,9 @@ import {
     FiDollarSign,
     FiClock,
     FiDroplet,
-    FiStar
+    FiStar,
+    FiEdit,
+    FiTrash2
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -47,6 +49,10 @@ const DeliveryPersonDashboard = () => {
         totalMileage: 0,
         averageRating: 0
     });
+    const [editDetail, setEditDetail] = useState(null);
+    const [showEditForm, setShowEditForm] = useState(false);
+    const [deleteDetail, setDeleteDetail] = useState(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('deliveryPersonToken');
@@ -299,6 +305,76 @@ const DeliveryPersonDashboard = () => {
             </div>
         </div>
     );
+
+    // Handler for updating delivery detail
+    const handleEditDeliveryDetail = (detail) => {
+        setEditDetail(detail);
+        setShowEditForm(true);
+    };
+
+    const handleUpdateDeliveryDetail = async (updatedDetail) => {
+        try {
+            const token = localStorage.getItem('deliveryPersonToken');
+            const response = await axios.put(
+                `http://localhost:5000/api/delivery/delivery-person/orders/${updatedDetail.orderId}/details`,
+                {
+                    deliveryCost: Number(updatedDetail.deliveryCost),
+                    mileage: Number(updatedDetail.mileage),
+                    petrolCost: Number(updatedDetail.petrolCost),
+                    timeSpent: Number(updatedDetail.timeSpent),
+                    additionalNotes: updatedDetail.additionalNotes || ''
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            if (response.data.success) {
+                toast.success('Delivery detail updated successfully');
+                setShowEditForm(false);
+                setEditDetail(null);
+                fetchDeliveryDetails();
+            } else {
+                throw new Error(response.data.message || 'Failed to update delivery detail');
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update delivery detail');
+        }
+    };
+
+    // Handler for deleting delivery detail
+    const handleDeleteDeliveryDetail = (detail) => {
+        setDeleteDetail(detail);
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDeleteDeliveryDetail = async () => {
+        if (!deleteDetail) return;
+        try {
+            const token = localStorage.getItem('deliveryPersonToken');
+            const response = await axios.delete(
+                `http://localhost:5000/api/delivery/delivery-person/orders/${deleteDetail.orderId}/details`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            if (response.data.success) {
+                toast.success('Delivery detail deleted successfully');
+                setShowDeleteConfirm(false);
+                setDeleteDetail(null);
+                fetchDeliveryDetails();
+            } else {
+                throw new Error(response.data.message || 'Failed to delete delivery detail');
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete delivery detail');
+        }
+    };
 
     if (loading) {
         return (
@@ -560,6 +636,7 @@ const DeliveryPersonDashboard = () => {
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Petrol Cost</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Spent</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -587,6 +664,22 @@ const DeliveryPersonDashboard = () => {
                                             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                                 Completed
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
+                                            <button
+                                                onClick={() => handleEditDeliveryDetail(detail)}
+                                                className="text-blue-600 hover:text-blue-900 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                                title="Edit"
+                                            >
+                                                <FiEdit className="w-5 h-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteDeliveryDetail(detail)}
+                                                className="text-red-600 hover:text-red-900 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-red-300"
+                                                title="Delete"
+                                            >
+                                                <FiTrash2 className="w-5 h-5" />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -618,6 +711,47 @@ const DeliveryPersonDashboard = () => {
                                 setSelectedOrderForDetails(null);
                             }}
                         />
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Delivery Details Modal */}
+            {showEditForm && editDetail && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+                    <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full m-4">
+                        <DeliveryDetailsForm
+                            orderId={editDetail.orderId}
+                            onSubmit={handleUpdateDeliveryDetail}
+                            onClose={() => {
+                                setShowEditForm(false);
+                                setEditDetail(null);
+                            }}
+                            initialValues={editDetail}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && deleteDetail && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-lg p-8 max-w-sm w-full">
+                        <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
+                        <p className="mb-6">Are you sure you want to delete this delivery detail?</p>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowDeleteConfirm(false)}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDeleteDeliveryDetail}
+                                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                                Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

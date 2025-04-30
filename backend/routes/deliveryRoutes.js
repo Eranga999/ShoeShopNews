@@ -180,6 +180,39 @@ router.get('/delivery-person/orders/:orderId/details', authMiddleware, async (re
   }
 });
 
+// Add PUT endpoint to update delivery details
+router.put('/delivery-person/orders/:orderId/details', deliveryPersonAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const deliveryPersonId = req.user.id;
+    const update = req.body;
+
+    const detail = await DeliveryDetails.findOneAndUpdate(
+      { orderId, deliveryPersonId },
+      update,
+      { new: true }
+    );
+    if (!detail) return res.status(404).json({ success: false, message: 'Detail not found' });
+    res.json({ success: true, details: detail });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Add DELETE endpoint to delete delivery details
+router.delete('/delivery-person/orders/:orderId/details', deliveryPersonAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const deliveryPersonId = req.user.id;
+
+    const result = await DeliveryDetails.findOneAndDelete({ orderId, deliveryPersonId });
+    if (!result) return res.status(404).json({ success: false, message: 'Detail not found' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Protected delivery manager routes
 router.use('/manager', authMiddleware);
 router.get('/manager/delivery-persons', getDeliveryPersons);
