@@ -394,6 +394,12 @@ const DeliveryManagerDashboard = () => {
       setIsDeleting(true);
       const token = localStorage.getItem('deliveryManagerToken');
       
+      if (!token) {
+        toast.error('Authentication required. Please login again.');
+        navigate('/delivery-login');
+        return;
+      }
+
       // Check if the delivery person has active orders
       const activeOrders = orders.filter(
         order => order.deliveryPerson?._id === deliveryPersonId && 
@@ -406,7 +412,7 @@ const DeliveryManagerDashboard = () => {
         return;
       }
 
-      // Updated API endpoint to match backend route
+      // Make the delete request
       const response = await axios.delete(
         `http://localhost:5000/api/delivery/manager/delivery-persons/${deliveryPersonId}`,
         { 
@@ -430,6 +436,7 @@ const DeliveryManagerDashboard = () => {
         }));
 
         toast.success('Delivery person deleted successfully');
+        setShowDeliveryPersonsModal(false); // Close the modal after successful deletion
       } else {
         throw new Error(response.data.message || 'Failed to delete delivery person');
       }
@@ -552,12 +559,14 @@ const DeliveryManagerDashboard = () => {
                             className={`inline-flex items-center px-3 py-1 border border-transparent rounded-md ${
                               activeOrders.length > 0
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'bg-red-50 text-red-600 hover:bg-red-100'
+                                : isDeleting
+                                  ? 'bg-red-100 text-red-400 cursor-wait'
+                                  : 'bg-red-50 text-red-600 hover:bg-red-100'
                             }`}
                             title={activeOrders.length > 0 ? "Cannot delete: Has active orders" : "Delete delivery person"}
                           >
-                            <FiTrash2 className="w-4 h-4 mr-1" />
-                            Delete
+                            <FiTrash2 className={`w-4 h-4 mr-1 ${isDeleting ? 'animate-spin' : ''}`} />
+                            {isDeleting ? 'Deleting...' : 'Delete'}
                           </button>
                         </td>
                       </tr>
