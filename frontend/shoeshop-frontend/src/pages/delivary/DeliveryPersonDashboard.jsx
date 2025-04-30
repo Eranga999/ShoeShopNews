@@ -62,9 +62,6 @@ const DeliveryPersonDashboard = () => {
         if (profile) {
             fetchAssignedOrders();
             fetchDeliveryDetails();
-            // Refresh orders every 30 seconds
-            const interval = setInterval(fetchAssignedOrders, 30000);
-            return () => clearInterval(interval);
         }
     }, [profile]);
 
@@ -118,7 +115,6 @@ const DeliveryPersonDashboard = () => {
                 }))
             }));
 
-            console.log('Transformed orders:', transformedOrders);
             setOrders(transformedOrders);
             
             // Calculate stats
@@ -150,7 +146,7 @@ const DeliveryPersonDashboard = () => {
             const token = localStorage.getItem('deliveryPersonToken');
             
             const response = await axios.get(
-                'http://localhost:5000/api/delivery/person/delivery-details',
+                'http://localhost:5000/api/delivery/delivery-person/delivery-details',
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -176,7 +172,7 @@ const DeliveryPersonDashboard = () => {
             console.error('Error fetching delivery details:', error);
             if (error.response?.status === 401) {
                 toast.error('Session expired. Please login again.');
-                navigate('/delivery-login');
+                navigate('/delivery-person-login');
             } else {
                 toast.error('Failed to fetch delivery details. Please try again.');
             }
@@ -229,6 +225,7 @@ const DeliveryPersonDashboard = () => {
     const handleDeliveryDetailsSubmit = async (details) => {
         try {
             await fetchAssignedOrders(); // Refresh orders after submission
+            await fetchDeliveryDetails(); // Refresh delivery details after submission
             toast.success('Delivery details submitted successfully');
         } catch (error) {
             console.error('Error refreshing orders:', error);
@@ -333,14 +330,14 @@ const DeliveryPersonDashboard = () => {
                             className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
                         >
                             <FiRefreshCw className="text-lg" />
-                            Refresh
+                            Refresh Orders
                         </button>
                         <button
                             onClick={fetchDeliveryDetails}
                             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                         >
                             <FiRefreshCw className="text-lg" />
-                            Refresh Data
+                            Refresh Details
                         </button>
                         <button
                             onClick={handleLogout}
@@ -567,24 +564,24 @@ const DeliveryPersonDashboard = () => {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {deliveryDetails.map((detail) => (
-                                    <tr key={detail._id} className="hover:bg-gray-50">
+                                    <tr key={detail.orderId} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {detail.orderId}
+                                            {detail.orderId.substring(0, 8)}...
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(detail.submittedAt).toLocaleDateString()}
+                                            {detail.submittedAt ? new Date(detail.submittedAt).toLocaleDateString() : ''}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            Rs. {detail.deliveryCost}
+                                            Rs. {detail.deliveryCost.toFixed(2)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {detail.mileage} km
+                                            {detail.mileage.toFixed(1)} km
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            Rs. {detail.petrolCost}
+                                            Rs. {detail.petrolCost.toFixed(2)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {detail.timeSpent} hours
+                                            {detail.timeSpent.toFixed(1)} hours
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -628,4 +625,4 @@ const DeliveryPersonDashboard = () => {
     );
 };
 
-export default DeliveryPersonDashboard; 
+export default DeliveryPersonDashboard;

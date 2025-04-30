@@ -1,5 +1,5 @@
-import { DeliveryPerson } from '../models/deliveryPersonModel.js';
-import { Order } from '../models/orderModel.js';
+import { DeliveryPerson } from '../modeles/deliveryPersonModel.js';
+import { Order } from '../modeles/orderModel.js';
 import axios from 'axios';
 
 // Get all delivery persons

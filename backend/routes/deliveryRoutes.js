@@ -12,10 +12,10 @@ import {
   getProfile
 } from '../controllers/deliveryPersonController.js';
 import { protect, authMiddleware, deliveryPersonAuth } from '../middleware/authMiddleware.js';
-import { Order } from '../models/orderModel.js';
+import { Order } from '../modeles/orderModel.js';
 import mongoose from 'mongoose';
-import { DeliveryPerson } from '../models/deliveryPersonModel.js';
-import { DeliveryDetail } from '../models/deliveryDetailModel.js';
+import { DeliveryPerson } from '../modeles/deliveryPersonModel.js';
+import { DeliveryDetails } from '../modeles/deliveryDetailModel.js'
 
 const router = express.Router();
 
@@ -372,9 +372,17 @@ router.get('/person/delivery-details', deliveryPersonAuth, async (req, res) => {
   try {
     const deliveryPersonId = req.user.id;
 
-    const deliveryDetails = await DeliveryDetail.find({ 
-      'deliveryPerson._id': deliveryPersonId 
-    }).sort({ submittedAt: -1 }); // Sort by submission date, newest first
+    // Find all orders assigned to this delivery person that have deliveryDetails
+    const orders = await Order.find({
+      'deliveryPerson._id': deliveryPersonId,
+      deliveryDetails: { $exists: true }
+    }).sort({ 'deliveryDetails.submittedAt': -1 });
+
+    // Map to delivery details format
+    const deliveryDetails = orders.map(order => ({
+      orderId: order._id,
+      ...order.deliveryDetails
+    }));
 
     res.json({
       success: true,

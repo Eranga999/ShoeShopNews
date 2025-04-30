@@ -9,7 +9,7 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
         mileage: '',
         petrolCost: '',
         timeSpent: '',
-        additionalNotes: '',
+        additionalNotes: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -55,6 +55,13 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
             if (response.data.success) {
                 toast.success('Delivery details submitted successfully');
                 onSubmit && onSubmit(response.data.details);
+                setDetails({
+                    deliveryCost: '',
+                    mileage: '',
+                    petrolCost: '',
+                    timeSpent: '',
+                    additionalNotes: ''
+                });
                 onClose && onClose();
             } else {
                 throw new Error(response.data.message || 'Failed to submit delivery details');
@@ -67,6 +74,8 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
                 onClose && onClose();
             } else if (error.response?.status === 404) {
                 toast.error('Order not found or you do not have permission to submit details for this order.');
+            } else if (error.response?.status === 400) {
+                toast.error(error.response.data.message || 'Delivery details already submitted for this order.');
             } else {
                 toast.error(error.response?.data?.message || 'Failed to submit delivery details');
             }
@@ -184,4 +193,4 @@ const DeliveryDetailsForm = ({ orderId, onSubmit, onClose }) => {
     );
 };
 
-export default DeliveryDetailsForm; 
+export default DeliveryDetailsForm;

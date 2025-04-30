@@ -594,7 +594,7 @@ const DeliveryManagerDashboard = () => {
 
       // Updated API endpoint to match backend route
       const response = await axios.get(
-        `http://localhost:5000/api/delivery/manager/orders/${orderId}/details`,
+        `http://localhost:5000/api/delivery/delivery-person/orders/${orderId}/details`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

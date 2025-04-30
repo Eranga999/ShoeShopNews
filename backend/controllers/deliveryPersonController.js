@@ -1,8 +1,9 @@
-import { DeliveryPerson } from '../models/deliveryPersonModel.js';
+import { DeliveryPerson } from '../modeles/deliveryPersonModel.js';
+import { DeliveryDetails } from '../modeles/deliveryDetailModel.js';
+import { Order } from '../modeles/orderModel.js';
 import { validateDeliveryPerson } from '../validation/deliveryPersonValidation.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { Order } from '../models/orderModel.js';
 
 // Create a new delivery person
 export const createDeliveryPerson = async (req, res) => {
@@ -121,7 +122,7 @@ export const getProfile = async (req, res) => {
     if (!deliveryPerson) {
       return res.status(404).json({
         success: false,
-        message: 'Delivery person not found'
+        message: 'Deliveryperson not found'
       });
     }
 
@@ -241,6 +242,97 @@ export const deleteDeliveryPerson = async (req, res) => {
       message: 'Delivery person deleted successfully'
     });
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// Submit delivery details
+export const submitDeliveryDetails = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { deliveryCost, mileage, petrolCost, timeSpent, additionalNotes } = req.body;
+    const deliveryPersonId = req.user.id;
+
+    // Validate order exists and is assigned to this delivery person
+    const order = await Order.findOne({
+      _id: orderId,
+      'deliveryPerson._id': deliveryPersonId
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found or not assigned to this delivery person'
+      });
+    }
+
+    // Check if delivery details already exist
+    const existingDetails = await DeliveryDetails.findOne({ orderId, deliveryPersonId });
+    if (existingDetails) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery details already submitted for this order'
+      });
+    }
+
+    // Create new delivery details
+    const deliveryDetails = new DeliveryDetails({
+      orderId,
+      deliveryPersonId,
+      deliveryCost,
+      mileage,
+      petrolCost,
+      timeSpent,
+      additionalNotes
+    });
+
+    await deliveryDetails.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Delivery details submitted successfully',
+      details: deliveryDetails
+    });
+  } catch (error) {
+    console.error('Error in submitDeliveryDetails:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// Get delivery details for a delivery person
+export const getDeliveryDetails = async (req, res) => {
+  try {
+    const deliveryPersonId = req.user.id;
+
+    const deliveryDetails = await DeliveryDetails.find({ deliveryPersonId })
+      .populate('orderId', 'orderNumber')
+      .lean();
+
+    // Transform the data to match frontend expectations
+    const transformedDetails = deliveryDetails.map(detail => ({
+      orderId: detail.orderId?._id?.toString() || detail.orderId,
+      deliveryCost: detail.deliveryCost,
+      mileage: detail.mileage,
+      petrolCost: detail.petrolCost,
+      timeSpent: detail.timeSpent,
+      additionalNotes: detail.additionalNotes,
+      submittedAt: detail.submittedAt
+    }));
+
+    res.status(200).json({
+      success: true,
+      details: transformedDetails
+    });
+  } catch (error) {
+    console.error('Error in getDeliveryDetails:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',

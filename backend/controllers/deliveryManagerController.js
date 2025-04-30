@@ -3,6 +3,7 @@ import Orders from "../modeles/order2.js";
 import jwt from "jsonwebtoken";
 import DeliveryPerson from "../modeles/DeliveryPerson.js";
 
+
 // Register new delivery manager
 export const registerDeliveryManager = async (req, res) => {
     try {

@@ -3,9 +3,11 @@ import {
   createDeliveryPerson,
   getAllDeliveryPersons,
   updateDeliveryPerson,
-  deleteDeliveryPerson
+  deleteDeliveryPerson,
+  submitDeliveryDetails,
+  getDeliveryDetails
 } from '../controllers/deliveryPersonController.js';
-import { authMiddleware } from '../middleware/authMiddleware.js';
+import { deliveryPersonAuth } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -16,9 +18,15 @@ router.post('/', createDeliveryPerson);
 router.get('/', getAllDeliveryPersons);
 
 // UPDATE: Update a delivery person
-router.put('/:id', authMiddleware, updateDeliveryPerson);
+router.put('/:id', deliveryPersonAuth, updateDeliveryPerson);
 
 // DELETE: Delete a delivery person
-router.delete('/:id', authMiddleware, deleteDeliveryPerson);
+router.delete('/:id', deliveryPersonAuth, deleteDeliveryPerson);
+
+// SUBMIT: Delivery details
+router.post('/orders/:orderId/details', deliveryPersonAuth, submitDeliveryDetails);
+
+// GET: Delivery details
+router.get('/delivery-details', deliveryPersonAuth, getDeliveryDetails);
 
 export default router;
