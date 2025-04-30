@@ -49,8 +49,20 @@ const DeliveryManagerDashboard = () => {
       navigate('/delivery-login');
       return;
     }
-    fetchOrders();
-    fetchDeliveryPersons();
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        await Promise.all([fetchOrders(), fetchDeliveryPersons()]);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error('Failed to load data. Please try again.');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [navigate]);
 
   const fetchDeliveryPersons = async () => {
@@ -77,34 +89,43 @@ const DeliveryManagerDashboard = () => {
       console.log('Raw orders data:', response.data);
 
       // Transform the orders data to match the frontend structure
-      const transformedOrders = Array.isArray(response.data) ? response.data.map(order => ({
-        _id: order._id,
-        customerName: `${order.firstName} ${order.lastName}`,
-        customerEmail: order.email,
-        shippingAddress: order.shippingAddress,
-        status: order.deliveryStatus || 'processing',
-        totalPrice: order.totalAmount,
-        paymentMethod: order.paymentMethod,
-        paymentStatus: order.paymentStatus,
-        items: order.items.map(item => ({
-          product: {
-            name: `${item.BrandName} ${item.ModelName}`,
-          },
-          quantity: item.quantity,
-          imageUrl: item.imageUrl || null, // Handle empty image URLs
-          price: item.totalAmount || 0,
-        })),
-      })) : [];
+      const transformedOrders = Array.isArray(response.data) ? response.data.map(order => {
+        // Calculate individual item prices if not available
+        const items = order.items.map(item => {
+          const itemPrice = item.price || (order.totalAmount / order.items.reduce((sum, i) => sum + i.quantity, 0));
+          return {
+            product: {
+              name: `${item.BrandName} ${item.ModelName}`,
+            },
+            quantity: item.quantity,
+            imageUrl: item.imageUrl || null,
+            price: itemPrice // Price per item
+          };
+        });
+
+        return {
+          _id: order._id,
+          customerName: `${order.firstName} ${order.lastName}`,
+          customerEmail: order.email,
+          shippingAddress: order.shippingAddress,
+          deliveryStatus: order.deliveryStatus || 'processing',
+          totalPrice: order.totalAmount,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus,
+          deliveryPerson: order.deliveryPerson || null,
+          items: items
+        };
+      }) : [];
 
       console.log('Transformed orders:', transformedOrders);
       setOrders(transformedOrders);
       
       // Calculate delivery stats
       const stats = {
-        pendingDeliveries: transformedOrders.filter(order => order.status === 'processing').length,
-        inTransit: transformedOrders.filter(order => order.status === 'pickedup').length,
-        completed: transformedOrders.filter(order => order.status === 'delivered').length,
-        cancelled: 0,
+        pendingDeliveries: transformedOrders.filter(order => order.deliveryStatus === 'processing' || !order.deliveryStatus).length,
+        inTransit: transformedOrders.filter(order => order.deliveryStatus === 'pickedup').length,
+        completed: transformedOrders.filter(order => order.deliveryStatus === 'delivered').length,
+        cancelled: transformedOrders.filter(order => order.deliveryStatus === 'cancelled').length,
         totalDrivers: deliveryPersons.length,
       };
       
@@ -126,9 +147,34 @@ const DeliveryManagerDashboard = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      // Update orders state immediately
+      setOrders(prevOrders => prevOrders.map(order => {
+        if (order._id === orderId) {
+          return {
+            ...order,
+            deliveryStatus: newStatus
+          };
+        }
+        return order;
+      }));
+
+      // Update delivery stats immediately
+      setDeliveryStats(prevStats => {
+        const updatedOrders = orders.map(order => 
+          order._id === orderId ? { ...order, deliveryStatus: newStatus } : order
+        );
+        
+        return {
+          pendingDeliveries: updatedOrders.filter(order => order.deliveryStatus === 'processing' || !order.deliveryStatus).length,
+          inTransit: updatedOrders.filter(order => order.deliveryStatus === 'pickedup').length,
+          completed: updatedOrders.filter(order => order.deliveryStatus === 'delivered').length,
+          cancelled: updatedOrders.filter(order => order.deliveryStatus === 'cancelled').length,
+          totalDrivers: prevStats.totalDrivers
+        };
+      });
+
       toast.success(`Order status updated to ${newStatus}`);
       setShowStatusModal(false);
-      fetchOrders();
     } catch (error) {
       console.error('Error updating order status:', error);
       toast.error('Failed to update status. Please try again.');
@@ -138,30 +184,107 @@ const DeliveryManagerDashboard = () => {
   const handleAssignDeliveryPerson = async (orderId, deliveryPersonId) => {
     try {
       const token = localStorage.getItem('deliveryManagerToken');
+      if (!token) {
+        navigate('/delivery-login');
+        return;
+      }
+
+      // Find the selected delivery person from the deliveryPersons array
+      const selectedPerson = deliveryPersons.find(person => person._id === deliveryPersonId);
+      if (!selectedPerson) {
+        toast.error('Selected delivery person not found');
+        return;
+      }
+
+      // Assign delivery person to order
       await axios.put(
         `http://localhost:5000/api/delivery/orders/${orderId}/assign`,
-        { deliveryPersonId },
+        { 
+          deliveryPersonId,
+          deliveryPerson: {
+            _id: selectedPerson._id,
+            name: selectedPerson.name,
+            email: selectedPerson.email,
+            phone: selectedPerson.phone
+          }
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      // Update orders state immediately
+      setOrders(prevOrders => prevOrders.map(order => {
+        if (order._id === orderId) {
+          return {
+            ...order,
+            deliveryPerson: selectedPerson
+          };
+        }
+        return order;
+      }));
+
       toast.success('Delivery person assigned successfully');
-      setShowAssignModal(false);
-      fetchOrders();
     } catch (error) {
       console.error('Error assigning delivery person:', error);
-      toast.error('Failed to assign delivery person. Please try again.');
+      if (error.response?.status === 401) {
+        navigate('/delivery-login');
+      } else {
+        toast.error('Failed to assign delivery person. Please try again.');
+      }
     }
   };
 
   const handleAddDeliveryPerson = async (e) => {
     e.preventDefault();
     try {
+      // Validate all required fields
+      if (!newDeliveryPerson.name || !newDeliveryPerson.email || 
+          !newDeliveryPerson.phone || !newDeliveryPerson.vehicleNumber || 
+          !newDeliveryPerson.licenseNumber) {
+        toast.error('All fields are required');
+        return;
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newDeliveryPerson.email)) {
+        toast.error('Please enter a valid email address');
+        return;
+      }
+
+      // Validate phone number (basic validation)
+      if (newDeliveryPerson.phone.length < 10) {
+        toast.error('Please enter a valid phone number');
+        return;
+      }
+
       const token = localStorage.getItem('deliveryManagerToken');
-      await axios.post(
+      if (!token) {
+        navigate('/delivery-login');
+        return;
+      }
+
+      // Create delivery person
+      const response = await axios.post(
         'http://localhost:5000/api/delivery/delivery-persons',
         newDeliveryPerson,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      // Send welcome email
+      try {
+        await axios.post(
+          'http://localhost:5000/api/delivery/send-welcome-email',
+          {
+            email: newDeliveryPerson.email,
+            name: newDeliveryPerson.name,
+            phone: newDeliveryPerson.phone
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (emailError) {
+        console.error('Error sending welcome email:', emailError);
+        // Don't fail the whole operation if email fails
+      }
 
       toast.success('Delivery person added successfully');
       setShowAddDeliveryPersonModal(false);
@@ -172,10 +295,17 @@ const DeliveryManagerDashboard = () => {
         vehicleNumber: '',
         licenseNumber: ''
       });
+      
+      // Refresh delivery persons list
       fetchDeliveryPersons();
     } catch (error) {
       console.error('Error adding delivery person:', error);
-      toast.error('Failed to add delivery person. Please try again.');
+      const errorMessage = error.response?.data?.message || 'Failed to add delivery person. Please try again.';
+      toast.error(errorMessage);
+      
+      if (error.response?.status === 401) {
+        navigate('/delivery-login');
+      }
     }
   };
 
@@ -212,6 +342,23 @@ const DeliveryManagerDashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem('deliveryManagerToken');
     navigate('/delivery-login');
+  };
+
+  // Add function to fetch orders for a specific delivery person
+  const fetchDeliveryPersonOrders = async (deliveryPersonId) => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      const response = await axios.get(
+        `http://localhost:5000/api/delivery/delivery-persons/${deliveryPersonId}/orders`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching delivery person orders:', error);
+      toast.error('Failed to fetch delivery person orders.');
+      return [];
+    }
   };
 
   if (loading) {
@@ -376,6 +523,11 @@ const DeliveryManagerDashboard = () => {
                           </option>
                         ))}
                       </select>
+                      {order.deliveryPerson && (
+                        <div className="mt-1 text-sm text-gray-500">
+                          Assigned: {order.deliveryPerson.name}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       Rs.{order.totalPrice.toFixed(2)}
@@ -447,10 +599,24 @@ const DeliveryManagerDashboard = () => {
               <div className="space-y-2">
                 {selectedOrder.items.map((item, index) => (
                   <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <span>{item.product.name} x {item.quantity}</span>
-                    <span>Rs.{(item.price * item.quantity).toFixed(2)}</span>
+                    <div className="flex items-center space-x-2">
+                      {item.imageUrl && (
+                        <img src={item.imageUrl} alt={item.product.name} className="w-12 h-12 object-cover rounded" />
+                      )}
+                      <span>{item.product.name} x {item.quantity}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-600">Price: Rs.{(item.price).toFixed(2)}</div>
+                      <div className="font-medium">Total: Rs.{(item.price * item.quantity).toFixed(2)}</div>
+                    </div>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="flex justify-between font-semibold">
+                  <span>Total Amount:</span>
+                  <span>Rs.{selectedOrder.totalPrice.toFixed(2)}</span>
+                </div>
               </div>
             </div>
             <div className="mt-6 flex justify-end">

@@ -42,6 +42,14 @@ const RedirectAuthenticatedUser = ({children})=>{
   return children
 }
 
+const ProtectedDeliveryRoute = ({ children }) => {
+  const token = localStorage.getItem('deliveryManagerToken');
+  if (!token) {
+    return <Navigate to="/delivery-login" replace />;
+  }
+  return children;
+};
+
 function App() {
   const { isAuthenticated, checkAuth, user } = useAuthStore();
 
@@ -53,8 +61,8 @@ function App() {
   console.log("user", user)
 
   const location = useLocation();
-  const noFooterRoutes = ['/customerlogin', '/login', '/customerregister', '/customerdashboard', '/employeelogin', '/admindashboard', '/delivery-login'];
-  const noHeaderRoutes = ['/employeelogin', '/admindashboard', '/delivery-login'];
+  const noFooterRoutes = ['/customerlogin', '/login', '/customerregister', '/customerdashboard', '/employeelogin', '/admindashboard', '/delivery-login', '/delivery-dashboard'];
+  const noHeaderRoutes = ['/employeelogin', '/admindashboard', '/delivery-login', '/delivery-dashboard'];
 
   return (
     <>
@@ -66,7 +74,11 @@ function App() {
         <Route path="/customerlogin" element={<CustomerLoginPage />}/>
         <Route path="/customerdashboard" element={<CustomerDashboard />}/>
         <Route path="/delivery-login" element={<DeliveryManagerLogin />}/>
-        <Route path="/delivery-dashboard" element={<DeliveryManagerDashboard />}/>
+        <Route path="/delivery-dashboard" element={
+          <ProtectedDeliveryRoute>
+            <DeliveryManagerDashboard />
+          </ProtectedDeliveryRoute>
+        }/>
 
         <Route path="/customerregister" element={
           <RedirectAuthenticatedUser>

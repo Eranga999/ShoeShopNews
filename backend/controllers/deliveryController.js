@@ -1,5 +1,5 @@
 import DeliveryPerson from '../modeles/DeliveryPerson.js';
-import Order from '../modeles/order2.js';
+import { Order } from '../models/orderModel.js';
 
 // Get all delivery persons
 export const getDeliveryPersons = async (req, res) => {
@@ -15,17 +15,52 @@ export const getDeliveryPersons = async (req, res) => {
 export const addDeliveryPerson = async (req, res) => {
   try {
     const { name, email, phone, vehicleNumber, licenseNumber } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !phone || !vehicleNumber || !licenseNumber) {
+      return res.status(400).json({ 
+        message: 'All fields are required: name, email, phone, vehicleNumber, licenseNumber' 
+      });
+    }
+
+    // Check if delivery person with same email exists
+    const existingPerson = await DeliveryPerson.findOne({ email });
+    if (existingPerson) {
+      return res.status(400).json({ 
+        message: 'A delivery person with this email already exists' 
+      });
+    }
+
+    // Create new delivery person
     const deliveryPerson = new DeliveryPerson({
       name,
       email,
       phone,
       vehicleNumber,
-      licenseNumber
+      licenseNumber,
+      status: 'active'
     });
-    await deliveryPerson.save();
-    res.status(201).json({ message: 'Delivery person added successfully', deliveryPerson });
+
+    // Save to database
+    const savedPerson = await deliveryPerson.save();
+
+    // Send response
+    res.status(201).json({ 
+      message: 'Delivery person added successfully', 
+      deliveryPerson: savedPerson 
+    });
+
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error in addDeliveryPerson:', error);
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        message: 'A delivery person with this email already exists' 
+      });
+    }
+    res.status(500).json({ 
+      message: 'Failed to add delivery person', 
+      error: error.message 
+    });
   }
 };
 
@@ -76,9 +111,24 @@ export const assignDeliveryPerson = async (req, res) => {
     const { orderId } = req.params;
     const { deliveryPersonId } = req.body;
     
+    // First, get the delivery person details
+    const deliveryPerson = await DeliveryPerson.findById(deliveryPersonId);
+    
+    if (!deliveryPerson) {
+      return res.status(404).json({ message: 'Delivery person not found' });
+    }
+
+    // Update order with delivery person details
     const order = await Order.findByIdAndUpdate(
       orderId,
-      { deliveryPerson: deliveryPersonId },
+      { 
+        deliveryPerson: {
+          _id: deliveryPerson._id,
+          name: deliveryPerson.name,
+          email: deliveryPerson.email,
+          phone: deliveryPerson.phone
+        }
+      },
       { new: true }
     );
     
@@ -88,6 +138,7 @@ export const assignDeliveryPerson = async (req, res) => {
     
     res.json({ message: 'Delivery person assigned successfully', order });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error in assignDeliveryPerson:', error);
+    res.status(500).json({ message: error.message });
   }
 }; 
