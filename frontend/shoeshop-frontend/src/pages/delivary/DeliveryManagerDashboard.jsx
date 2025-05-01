@@ -1597,29 +1597,23 @@ const DeliveryManagerDashboard = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">Order ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Order #</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">Reason</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">Description</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[220px]">Contact</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {refundRequests.map((refund) => (
                       <tr key={refund._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {refund.orderNumber}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {refund.reason}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {refund.description.length > 50 
-                            ? `${refund.description.substring(0, 50)}...` 
-                            : refund.description}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[180px]">{typeof refund.orderId === 'object' ? refund.orderId._id || refund.orderId : refund.orderId}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[120px]">{refund.orderNumber}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[140px]">{refund.reason}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 min-w-[200px] max-w-[250px] truncate" title={refund.description}>{refund.description}</td>
+                        <td className="px-6 py-4 whitespace-nowrap min-w-[100px]">
                           <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             refund.status === 'approved' ? 'bg-green-100 text-green-800' :
                             refund.status === 'rejected' ? 'bg-red-100 text-red-800' :
@@ -1628,10 +1622,11 @@ const DeliveryManagerDashboard = () => {
                             {refund.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {refund.contactPreference}: {refund.contactDetails}
+                        <td className="px-6 py-4 whitespace-normal break-words text-sm text-gray-900 min-w-[220px] max-w-[300px]">
+                          <div><span className="font-semibold capitalize">{refund.contactPreference}:</span></div>
+                          <div>{refund.contactDetails}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium min-w-[100px]">
                           <div className="flex space-x-2">
                             <button
                               onClick={() => {
