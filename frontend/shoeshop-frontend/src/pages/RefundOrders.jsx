@@ -48,10 +48,7 @@ const RefundOrders = () => {
     }
 
     try {
-      console.log('Fetching orders for user:', user);
-      
-      // Use the hardcoded user ID that matches the orders in the database
-      const response = await axios.get(`http://localhost:5000/api/order/user236`, {
+      const response = await axios.get(`http://localhost:5000/api/order/${user._id}`, {
         withCredentials: true
       });
       
@@ -68,7 +65,12 @@ const RefundOrders = () => {
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
-      toast.error(error.response?.data?.message || 'Failed to fetch orders');
+      if (error.response?.status === 401) {
+        toast.error('Please login to view orders');
+        navigate('/customerlogin');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to fetch orders');
+      }
     } finally {
       setLoading(false);
     }
@@ -89,6 +91,7 @@ const RefundOrders = () => {
 
     try {
       const formData = new FormData();
+      formData.append('userId', user._id);
       formData.append('reason', refundForm.reason);
       formData.append('description', refundForm.description);
       formData.append('contactPreference', refundForm.contactPreference);
@@ -124,7 +127,12 @@ const RefundOrders = () => {
       fetchOrders();
     } catch (error) {
       console.error('Error requesting refund:', error);
-      toast.error(error.response?.data?.message || 'Failed to submit refund request');
+      if (error.response?.status === 401) {
+        toast.error('Please login to request a refund');
+        navigate('/customerlogin');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to submit refund request');
+      }
     }
   };
 

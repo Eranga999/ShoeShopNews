@@ -1,10 +1,11 @@
 import React, { useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { GoStar } from "react-icons/go";
 import "react-toastify/dist/ReactToastify.css";
+import { useAuthStore } from '../store/authStore';
 
 const Product = () => {
   const { productId } = useParams();
@@ -33,6 +34,9 @@ const Product = () => {
   const [currentReviewId, setCurrentReviewId] = useState(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isEditCompressing, setIsEditCompressing] = useState(false);
+
+  const { user, isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
 
   const fetchProductData = async () => {
     axios
@@ -67,6 +71,15 @@ const Product = () => {
   };
 
   const handleAddToCart = () => {
+    if (!isAuthenticated || !user) {
+      toast.error("Please login to add items to cart", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      navigate('/customerlogin');
+      return;
+    }
+
     if (!selectedSizeId) {
       toast.error("Please select a size", {
         position: "top-right",
@@ -76,7 +89,7 @@ const Product = () => {
     }
 
     const cartItem = {
-      userId: "user236",
+      userId: user._id,
       items: [
         {
           brand: {
@@ -100,7 +113,9 @@ const Product = () => {
     };
 
     axios
-      .post(`http://localhost:5000/api/cart`, cartItem)
+      .post(`http://localhost:5000/api/cart`, cartItem, {
+        withCredentials: true
+      })
       .then((res) => {
         console.log(res.data);
 
@@ -113,12 +128,20 @@ const Product = () => {
       })
       .catch((err) => {
         console.error(err);
-        const errorMessage =
-          err.response?.data?.message || "Failed to add product to cart";
-        toast.error(errorMessage, {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        if (err.response?.status === 401) {
+          toast.error('Please login to add items to cart', {
+            position: "top-right",
+            autoClose: 3000,
+          });
+          navigate('/customerlogin');
+        } else {
+          const errorMessage =
+            err.response?.data?.message || "Failed to add product to cart";
+          toast.error(errorMessage, {
+            position: "top-right",
+            autoClose: 3000,
+          });
+        }
       });
   };
 

@@ -7,32 +7,82 @@ export const createRefundRequest = async (req, res) => {
     try {
         const { orderId } = req.params;
         const { reason, description, contactPreference, contactDetails } = req.body;
-        const images = req.files ? req.files.map(file => file.path) : [];
 
-        // Validate order exists
-        const order = await Orders.findById(orderId);
-        if (!order) {
-            return res.status(404).json({ message: "Order not found" });
+        // Get userId from token/session (set by verifyToken middleware)
+        const userId = req.userId || req.user?._id || req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "User not authenticated"
+            });
         }
 
-        // Check if a refund request already exists for this order
+        // Validate orderId format
+        if (!mongoose.Types.ObjectId.isValid(orderId)) {
+            return res.status(400).json({ 
+                success: false,
+                message: "Invalid order ID format" 
+            });
+        }
+
+        // Get file paths from multer
+        const images = req.files ? req.files.map(file => file.path.replace(/\\/g, '/')) : [];
+
+        // Validate required fields
+        if (!reason || !description || !contactDetails) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields"
+            });
+        }
+
+        // Validate order exists and belongs to user
+        const order = await Orders.findOne({ 
+            _id: orderId,
+            userId: userId.toString() // Always compare as string
+        });
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Order not found or does not belong to user"
+            });
+        }
+
+        // Check if order is eligible for refund (e.g., not already refunded)
+        if (order.status === 'Refunded' || order.paymentStatus !== 'Paid') {
+            return res.status(400).json({
+                success: false,
+                message: "Order is not eligible for refund"
+            });
+        }
+
+        // Check if a refund request already exists
         const existingRefund = await Refund.findOne({ orderId });
         if (existingRefund) {
-            return res.status(400).json({ message: "A refund request already exists for this order" });
+            return res.status(400).json({
+                success: false,
+                message: "A refund request already exists for this order"
+            });
         }
 
         // Create new refund request
         const refundRequest = new Refund({
             orderId,
-            userId: order.userId,
+            userId: userId.toString(),
             reason,
             description,
             images,
             contactPreference,
-            contactDetails
+            contactDetails,
+            status: 'pending'
         });
 
         await refundRequest.save();
+
+        // Update order status
+        order.status = 'RefundRequested';
+        await order.save();
 
         res.status(201).json({
             success: true,
@@ -44,7 +94,8 @@ export const createRefundRequest = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to create refund request",
-            error: error.message
+            error: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };

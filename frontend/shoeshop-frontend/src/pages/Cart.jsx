@@ -8,24 +8,30 @@ import { HiOutlineMinusCircle } from "react-icons/hi";
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 
 const Cart = () => {
     const { currency } = useContext(ShopContext);
     const [cartData, setCartData] = useState({ items: [] });
     const [loading, setLoading] = useState(true);
     const [totalprice, setTotal] = useState(0);
-
-    const userId = "user236";
+    const { user, isAuthenticated } = useAuthStore();
     const DELIVERY_FEE = 200;
     const navigate = useNavigate();
 
     useEffect(() => {
+        if (!isAuthenticated || !user) {
+            navigate('/customerlogin');
+            return;
+        }
         fetchCart();
-    }, []);
+    }, [isAuthenticated, user, navigate]);
 
     const fetchCart = async () => {
         try {
-            const response = await axios.get(`http://localhost:5000/api/cart/${userId}`);
+            const response = await axios.get(`http://localhost:5000/api/cart/${user._id}`, {
+                withCredentials: true
+            });
             console.log('Cart data:', response.data);
             if (response.data && response.data.items) {
                 setCartData(response.data);
@@ -34,7 +40,10 @@ const Cart = () => {
             }
         } catch (error) {
             console.error("Error fetching cart:", error);
-            if (error.response?.status === 404) {
+            if (error.response?.status === 401) {
+                toast.error('Please login to view your cart');
+                navigate('/customerlogin');
+            } else if (error.response?.status === 404) {
                 // Cart not found is a normal state for new users
                 setCartData({ items: [] });
             } else {
@@ -50,7 +59,7 @@ const Cart = () => {
 
         const item = cartData.items[index];
         const itemToUpdate = {
-            userId: userId,
+            userId: user._id,
             item: {
                 brand: item.brand,
                 color: item.color,
@@ -61,13 +70,20 @@ const Cart = () => {
         };
 
         try {
-            const response = await axios.put(`http://localhost:5000/api/cart/${userId}`, itemToUpdate);
+            const response = await axios.put(`http://localhost:5000/api/cart/${user._id}`, itemToUpdate, {
+                withCredentials: true
+            });
             if (response.data.updatedCart) {
                 setCartData(response.data.updatedCart);
             }
         } catch (error) {
             console.error("Error updating quantity:", error);
-            toast.error(error.response?.data?.message || "Failed to update quantity");
+            if (error.response?.status === 401) {
+                toast.error('Please login to update your cart');
+                navigate('/customerlogin');
+            } else {
+                toast.error(error.response?.data?.message || "Failed to update quantity");
+            }
         }
     };
 
@@ -79,7 +95,8 @@ const Cart = () => {
         };
 
         try {
-            const response = await axios.delete(`http://localhost:5000/api/cart/${userId}`, {
+            const response = await axios.delete(`http://localhost:5000/api/cart/${user._id}`, {
+                withCredentials: true,
                 data: itemToDelete
             });
             if (response.data.cart) {
@@ -88,7 +105,12 @@ const Cart = () => {
             }
         } catch (error) {
             console.error("Error deleting item:", error);
-            toast.error("Failed to remove item");
+            if (error.response?.status === 401) {
+                toast.error('Please login to remove items from your cart');
+                navigate('/customerlogin');
+            } else {
+                toast.error("Failed to remove item");
+            }
         }
     };
 
