@@ -42,6 +42,7 @@ export const signup = async (req, res)=>{
 			message: "User created successfully",
 			user: {
 				...user._doc,
+				userId: user._id,
 				password: undefined
 			},
 		});
@@ -108,6 +109,7 @@ export const login = async (req, res)=>{
 			message: "Logged in successfully",
 			user: {
 				...user._doc,
+				userId: user._id,
 				password: undefined,
 			},
 		});
@@ -188,7 +190,13 @@ export const checkAuth = async(req, res)=>{
 			return res.status(400).json({ success: false, message: "User not found" });
 		}
 
-		res.status(200).json({ success: true, user });
+		res.status(200).json({ 
+			success: true, 
+			user: {
+				...user._doc,
+				userId: user._id
+			}
+		});
 	} catch (error) {
 		console.log("Error in checkAuth ", error);
 		res.status(400).json({ success: false, message: error.message });

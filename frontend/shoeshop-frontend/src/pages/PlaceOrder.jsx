@@ -2,10 +2,19 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import CryptoJS from "crypto-js"; // Import CryptoJS
 import axios from 'axios';
+import { useAuthStore } from "../store/authStore";
+
 const PlaceOrder = () => {
   const [message, setMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [cartData,setCartData] = useState("");
+  const [cartData, setCartData] = useState("");
+  const [total, setTotal] = useState(0);
+  const { user, isAuthenticated } = useAuthStore();
+  
+  // PayHere merchant credentials
+  const merchant_id = "1230105";
+  const merchant_secret = "MjE3OTQ4OTkxNjM0ODU3OTQ2NDU0MTAyMDU4NjEzMjM1NDU4MjQ2MA==";
+  
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -16,13 +25,16 @@ const PlaceOrder = () => {
     country: "Sri Lanka",
   });
 
-  const userId = "user236"
   const DELIVERY_FEE = 200;
   const navigate = useNavigate();
 
-  // Merchant credentials (replace with your actual credentials)
-  const merchant_id = "1230105"; // Replace with your Merchant ID
-  const merchant_secret = "MjE3OTQ4OTkxNjM0ODU3OTQ2NDU0MTAyMDU4NjEzMjM1NDU4MjQ2MA=="; // Replace with your Merchant Secret
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      navigate('/customerlogin');
+      return;
+    }
+  }, [isAuthenticated, user, navigate]);
 
   // Load PayHere script when component mounts
   useEffect(() => {
@@ -57,19 +69,64 @@ const PlaceOrder = () => {
     };
   }, []);
 
+  // Fetch cart data
   useEffect(() => {
-    // const userId = "user122"
-    axios.get(`http://localhost:5000/api/cart/${userId}`)
+    if (!user?._id) {
+      console.log('No user ID available');
+      return;
+    }
+    
+    console.log('Fetching cart for user:', user._id);
+    
+    axios.get(`http://localhost:5000/api/cart/${user._id}`, {
+      withCredentials: true
+    })
     .then((res) => {
-        console.log('Cart data:', res.data); // Debugging console log
+        console.log('Raw cart response:', res);
+        console.log('Cart data structure:', {
+          hasItems: !!res.data.items,
+          itemsIsArray: Array.isArray(res.data.items),
+          itemCount: res.data.items ? res.data.items.length : 0,
+          firstItem: res.data.items?.[0]
+        });
         setCartData(res.data);
-        // setCartData(res.data.items || []); // Assuming `items` contains cart products
     })
     .catch((err) => {
         console.error("Error fetching cart:", err);
+        if (err.response?.status === 401) {
+          navigate('/customerlogin');
+        }
     });
     
-}, []);
+  }, [user?._id, navigate]);
+
+  // Add useEffect to calculate total whenever cartData changes
+  useEffect(() => {
+    calculateTotal();
+  }, [cartData]);
+
+  const calculateTotal = () => {
+    let calculatedTotal = 0;
+    
+    if (cartData && cartData.items && Array.isArray(cartData.items)) {
+      calculatedTotal = cartData.items.reduce((sum, item) => {
+        const itemPrice = item.price || 0;
+        const quantity = item.quantity || 0;
+        return sum + (itemPrice * quantity);
+      }, 0);
+      
+      // Add delivery fee
+      calculatedTotal += DELIVERY_FEE;
+    }
+    
+    setTotal(calculatedTotal);
+    return calculatedTotal;
+  };
+
+  // Replace the old totalPrice function
+  const totalPrice = () => {
+    return total;
+  };
 
   // Function to generate the secure hash using CryptoJS
   const generateHash = (merchant_id, order_id, amount, currency, merchant_secret) => {
@@ -125,22 +182,6 @@ const PlaceOrder = () => {
   };
   
 
-  const totalPrice = () => {
-    let total = 0;
-  
-    if (cartData && Array.isArray(cartData.items)) {
-      for (let i = 0; i < cartData.items.length; i++) {
-        const item = cartData.items[i];
-        total += item.price * item.quantity;
-      }
-      total+= DELIVERY_FEE;
-    }
-  
-    return total;
-  };
-  
-  const tot = totalPrice().toFixed(2);
-  
   const saveOrderToDatabase = async (paymentStatus) => {
     if (!cartData || !Array.isArray(cartData.items)) {
       setMessage("Cart is empty or invalid.");
@@ -149,7 +190,7 @@ const PlaceOrder = () => {
     }
   
     const orderPayload = {
-      userId: userId,
+      userId: user._id,
       firstName: formData.firstName,
       lastName: formData.lastName,
       totalAmount: totalPrice(),
@@ -162,8 +203,8 @@ const PlaceOrder = () => {
       city: formData.city,
       items: cartData.items.map(item => ({
         shoeId: item.brand.brandId,
-        BrandName:item.brand.brandName,
-        ModelName:item.brand.modelName,
+        BrandName: item.brand.brandName,
+        ModelName: item.brand.modelName,
         color: item.color.colorName,
         size: item.size.size,
         quantity: item.quantity,
@@ -172,12 +213,17 @@ const PlaceOrder = () => {
     };
   
     try {
-      const res = await axios.post("http://localhost:5000/api/order", orderPayload);
-      console.log("Order saved:", res.data);
+      const response = await axios.post("http://localhost:5000/api/order", orderPayload, {
+        withCredentials: true
+      });
+      console.log("Order saved:", response.data);
     } catch (error) {
       console.error("Error saving order:", error);
       setMessage("Error saving order. Please try again.");
       setIsModalOpen(true);
+      if (error.response?.status === 401) {
+        navigate('/customerlogin');
+      }
     }
   };
   
@@ -191,36 +237,33 @@ const PlaceOrder = () => {
     }
 
     // Check if PayHere script is loaded
-    window.payhere.onCompleted = async function onCompleted(orderId) {
-      console.log("Payment completed. OrderID:", orderId);
-      await saveOrderToDatabase("Paid"); // Save with status "Paid"
-      setMessage("Payment Successful!");
+    if (!window.payhere) {
+      setMessage("Payment gateway is not loaded. Please try again.");
       setIsModalOpen(true);
-    };
-    
-
-    
-    
+      return;
+    }
 
     // Create a unique order ID
     const order_id = "Order" + new Date().getTime();
-    const amount = tot; // Fixed amount for testing
+    const amount = total.toFixed(2); // Ensure two decimals
     const currency = "LKR";
 
-    // Generate the secure hash
-    const hash = generateHash(merchant_id, order_id, amount, currency, merchant_secret);
+    // Generate the secure hash (amount as string with two decimals)
+    const secretHash = CryptoJS.MD5(merchant_secret).toString().toUpperCase();
+    const fullString = `${merchant_id}${order_id}${amount}${currency}${secretHash}`;
+    const hash = CryptoJS.MD5(fullString).toString().toUpperCase();
 
     // Configure the PayHere payment object
     const payment = {
       sandbox: true, // Set to false when going live
-      merchant_id: merchant_id, // Merchant ID
-      return_url: window.location.origin + "/payment-success", // Redirect after success
-      cancel_url: window.location.origin + "/payment-cancel", // Redirect if cancelled
-      notify_url: window.location.origin + "/notify",
+      merchant_id: merchant_id,
+      return_url: window.location.origin + "/payment-success",
+      cancel_url: window.location.origin + "/payment-cancel",
+      notify_url: "http://localhost:5000/api/payment/notify",
 
       order_id: order_id,
-      items: "Test Product",
-      amount: amount,
+      items: cartData.items.map(item => `${item.brand.brandName} ${item.brand.modelName}`).join(", "),
+      amount: amount, // Use the string with two decimals
       currency: currency,
       first_name: formData.firstName,
       last_name: formData.lastName,
@@ -229,7 +272,35 @@ const PlaceOrder = () => {
       address: formData.address,
       city: formData.city || "Colombo",
       country: formData.country || "Sri Lanka",
-      hash: hash, // Include the generated hash
+      hash: hash
+    };
+
+    console.log('PayHere payment config:', payment); // Debug log
+
+    // Set up the completion callback
+    window.payhere.onCompleted = async function onCompleted(orderId) {
+      console.log("Payment completed. OrderID:", orderId);
+      try {
+        await saveOrderToDatabase("Paid");
+        setMessage("Payment Successful!");
+        setIsModalOpen(true);
+      } catch (error) {
+        console.error("Error saving order:", error);
+        setMessage("Payment successful but error saving order. Please contact support.");
+        setIsModalOpen(true);
+      }
+    };
+
+    window.payhere.onDismissed = function onDismissed() {
+      console.log("Payment dismissed");
+      setMessage("Payment cancelled by user");
+      setIsModalOpen(true);
+    };
+
+    window.payhere.onError = function onError(error) {
+      console.error("PayHere Error:", error);
+      setMessage("Payment Error: " + error);
+      setIsModalOpen(true);
     };
 
     // Start the PayHere payment
@@ -345,12 +416,16 @@ const PlaceOrder = () => {
           <div className="mt-6 p-4 bg-gray-100 rounded">
             <h4 className="font-medium mb-2">Order Summary</h4>
             <div className="flex justify-between mb-2">
-              <span>Product:</span>
-              <span>Test Product</span>
+              <span>Subtotal:</span>
+              <span>LKR {cartData && cartData.items ? (total - DELIVERY_FEE).toFixed(2) : '0.00'}</span>
             </div>
-            <div className="flex justify-between font-bold">
+            <div className="flex justify-between mb-2">
+              <span>Delivery Fee:</span>
+              <span>LKR {DELIVERY_FEE.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold border-t pt-2 mt-2">
               <span>Total:</span>
-              <span>LKR {tot}</span>
+              <span>LKR {total.toFixed(2)}</span>
             </div>
           </div>
         </div>

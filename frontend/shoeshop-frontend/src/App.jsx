@@ -35,6 +35,8 @@ import DeliveryManagerDashboard from "./pages/delivary/DeliveryManagerDashboard"
 import DeliveryLogin from "./pages/delivary/DeliveryLogin";
 import DeliverySignup from "./pages/delivary/DeliverySignup";
 import DeliveryPersonDashboard from "./pages/delivary/DeliveryPersonDashboard";
+import DeliveryServiceReview from "./pages/delivary/DeliveryServiceReview";
+import RefundOrders from "./pages/RefundOrders";
 
 const RedirectAuthenticatedUser = ({children})=>{
   const {isAuthenticated, user} = useAuthStore();
@@ -102,6 +104,10 @@ function App() {
             <DeliveryPersonDashboard />
           </ProtectedDeliveryPersonRoute>
         }/>
+
+        {/* Customer Routes */}
+        <Route path="/delivery-service-review" element={<DeliveryServiceReview />}/>
+        <Route path="/refund-orders" element={<RefundOrders />}/>
 
         <Route path="/customerregister" element={
           <RedirectAuthenticatedUser>

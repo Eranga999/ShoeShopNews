@@ -1,21 +1,38 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
+import { toast } from 'react-hot-toast';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
-  const userId = "user236";
+  const { user, isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
+    if (!isAuthenticated || !user) {
+      navigate('/customerlogin');
+      return;
+    }
+
     axios
-      .get(`http://localhost:5000/api/order/${userId}`)
+      .get(`http://localhost:5000/api/order/${user._id}`, {
+        withCredentials: true
+      })
       .then((res) => {
         console.log('Order data:', res.data);
         setOrders(res.data);
       })
       .catch((err) => {
         console.error("Error fetching orders:", err);
+        if (err.response?.status === 401) {
+          toast.error('Please login to view your orders');
+          navigate('/customerlogin');
+        } else {
+          toast.error('Failed to fetch orders');
+        }
       });
-  }, []);
+  }, [user?._id, isAuthenticated, navigate]);
 
   return (
     <div className="p-6 max-w-6xl mx-auto">

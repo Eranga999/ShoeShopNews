@@ -17,7 +17,9 @@ import {
   FiCreditCard,
   FiDollarSign,
   FiInfo,
-  FiTrash2
+  FiTrash2,
+  FiUser,
+  FiHash
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -26,6 +28,27 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Header from './Header';
 import Footer from './Footer';
+
+// Add animation styles
+const styles = `
+  @keyframes fade-in-out {
+    0% { opacity: 0; transform: translateY(-1rem); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-1rem); }
+  }
+  .animate-fade-in-out {
+    animation: fade-in-out 3s ease-in-out forwards;
+  }
+`;
+
+// Add styles to document head
+if (!document.getElementById('dashboard-styles')) {
+  const styleSheet = document.createElement('style');
+  styleSheet.id = 'dashboard-styles';
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
+}
 
 const DeliveryManagerDashboard = () => {
   const navigate = useNavigate();
@@ -50,6 +73,14 @@ const DeliveryManagerDashboard = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deliveryDetails, setDeliveryDetails] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [profile, setProfile] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const [refundRequests, setRefundRequests] = useState([]);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [selectedRefund, setSelectedRefund] = useState(null);
+  const [showRefundDetailsModal, setShowRefundDetailsModal] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('deliveryManagerToken');
@@ -61,7 +92,7 @@ const DeliveryManagerDashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        await Promise.all([fetchOrders(), fetchDeliveryPersons()]);
+        await Promise.all([fetchOrders(), fetchDeliveryPersons(), fetchProfile(), fetchRefundRequests()]);
         fetchAllDeliveryDetails();
         setLoading(false);
       } catch (error) {
@@ -645,7 +676,7 @@ const DeliveryManagerDashboard = () => {
           <h2 className="text-2xl font-bold text-gray-900">Delivery Details</h2>
           <button
             onClick={() => setShowDeliveryDetails(false)}
-            className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
+            className="text-gray-500 hover:text-gray-700"
           >
             <FiX className="w-6 h-6" />
           </button>
@@ -654,37 +685,37 @@ const DeliveryManagerDashboard = () => {
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <FiDollarSign className="text-blue-500 w-5 h-5" />
-                  <div>
-                    <p className="text-sm text-gray-500">Delivery Cost</p>
+                <div>
+                  <p className="text-sm text-gray-500">Delivery Cost</p>
                     <p className="font-medium text-gray-900">Rs. {selectedDeliveryDetails.deliveryCost}</p>
-                  </div>
                 </div>
               </div>
+              </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <FiTruck className="text-blue-500 w-5 h-5" />
-                  <div>
-                    <p className="text-sm text-gray-500">Mileage</p>
+                <div>
+                  <p className="text-sm text-gray-500">Mileage</p>
                     <p className="font-medium text-gray-900">{selectedDeliveryDetails.mileage} km</p>
-                  </div>
                 </div>
               </div>
+              </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <FiDroplet className="text-blue-500 w-5 h-5" />
-                  <div>
-                    <p className="text-sm text-gray-500">Petrol Cost</p>
+                <div>
+                  <p className="text-sm text-gray-500">Petrol Cost</p>
                     <p className="font-medium text-gray-900">Rs. {selectedDeliveryDetails.petrolCost}</p>
-                  </div>
                 </div>
               </div>
+              </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <FiClock className="text-blue-500 w-5 h-5" />
-                  <div>
-                    <p className="text-sm text-gray-500">Time Spent</p>
+                <div>
+                  <p className="text-sm text-gray-500">Time Spent</p>
                     <p className="font-medium text-gray-900">{selectedDeliveryDetails.timeSpent} hours</p>
                   </div>
                 </div>
@@ -806,6 +837,219 @@ const DeliveryManagerDashboard = () => {
     doc.save('delivery-details-report.pdf');
   };
 
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      const response = await axios.get('http://localhost:5000/api/delivery-manager/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data) {
+        setProfile(response.data);
+        console.log('Profile data:', response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('deliveryManagerToken');
+        navigate('/delivery-login');
+      } else {
+        toast.error('Failed to fetch profile');
+      }
+    }
+  };
+
+  const fetchRefundRequests = async () => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      if (!token) {
+        toast.error('Please login to view refund requests');
+        navigate('/delivery-login');
+        return;
+      }
+
+      const response = await axios.get('http://localhost:5000/api/refunds/all', {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.data && response.data.success) {
+        setRefundRequests(response.data.refunds || []);
+        setShowSuccessMessage(true);
+        setSuccessMessage('Refund requests loaded successfully');
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+      } else {
+        console.warn('No refunds found or invalid response format:', response.data);
+        setRefundRequests([]);
+      }
+    } catch (error) {
+      console.error('Error fetching refund requests:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to fetch refund requests';
+      toast.error(errorMessage);
+      
+      if (error.response?.status === 401) {
+        localStorage.removeItem('deliveryManagerToken');
+        navigate('/delivery-login');
+      }
+    }
+  };
+
+  const handleRefundStatus = async (refundId, status) => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      if (!token) {
+        toast.error('Please login to update refund status');
+        navigate('/delivery-login');
+        return;
+      }
+
+      const response = await axios.put(
+        `http://localhost:5000/api/refunds/${refundId}/status`,
+        { status },
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        }
+      );
+      
+      if (response.data.success) {
+        toast.success(`Refund request ${status} successfully`);
+        await fetchRefundRequests(); // Refresh the list
+        setShowRefundDetailsModal(false);
+      }
+    } catch (error) {
+      console.error('Error updating refund status:', error);
+      const errorMessage = error.response?.data?.message || `Failed to ${status} refund request`;
+      toast.error(errorMessage);
+      
+      if (error.response?.status === 401) {
+        localStorage.removeItem('deliveryManagerToken');
+        navigate('/delivery-login');
+      }
+    }
+  };
+
+  const RefundDetailsModal = () => {
+    if (!selectedRefund) return null;
+
+    // Fallback for order number
+    let orderNumber = selectedRefund.orderNumber;
+    if (!orderNumber) {
+      if (typeof selectedRefund.orderId === 'object' && selectedRefund.orderId._id) {
+        orderNumber = selectedRefund.orderId._id.substring(0, 8).toUpperCase();
+      } else if (typeof selectedRefund.orderId === 'string') {
+        orderNumber = selectedRefund.orderId.substring(0, 8).toUpperCase();
+      } else {
+        orderNumber = 'N/A';
+      }
+    }
+
+    return (
+      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[9999] backdrop-blur-sm">
+        <div className="relative bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full m-4 z-[10000]">
+          <div className="flex justify-between items-start mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Refund Request Details</h2>
+            <button
+              onClick={() => setShowRefundDetailsModal(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <FiX className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Order Number</p>
+                <p className="font-medium text-gray-900">#{orderNumber}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Status</p>
+                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  selectedRefund.status === 'approved' ? 'bg-green-100 text-green-800' :
+                  selectedRefund.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {selectedRefund.status}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Reason for Refund</p>
+              <p className="font-medium text-gray-900">{selectedRefund.reason}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Description</p>
+              <p className="font-medium text-gray-900">{selectedRefund.description}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Contact Information</p>
+              <p className="font-medium text-gray-900">
+                {selectedRefund.contactPreference}: {selectedRefund.contactDetails}
+              </p>
+            </div>
+
+            {selectedRefund.images && selectedRefund.images.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-500 mb-2">Attached Images</p>
+                <div className="grid grid-cols-3 gap-4">
+                  {selectedRefund.images.map((image, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={`http://localhost:5000/${image}`}
+                        alt={`Refund evidence ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg"
+                      />
+                      <a
+                        href={`http://localhost:5000/${image}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity duration-200 rounded-lg"
+                      >
+                        <span className="text-white text-sm">View Full Size</span>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedRefund.status === 'pending' && (
+              <div className="flex space-x-4 mt-6">
+                <button
+                  onClick={() => {
+                    handleRefundStatus(selectedRefund._id, 'approved');
+                    setShowRefundDetailsModal(false);
+                  }}
+                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700"
+                >
+                  Approve Refund
+                </button>
+                <button
+                  onClick={() => {
+                    handleRefundStatus(selectedRefund._id, 'rejected');
+                    setShowRefundDetailsModal(false);
+                  }}
+                  className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700"
+                >
+                  Reject Refund
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex justify-center items-center">
@@ -816,14 +1060,21 @@ const DeliveryManagerDashboard = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
-      <Header userName="Manager" onLogout={handleLogout} />
+      <Header userName={profile?.name || "Manager"} onLogout={handleLogout} />
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Delivery Management</h1>
-            <p className="mt-2 text-gray-600">Manage orders and delivery status</p>
+            <p className="mt-2 text-gray-600">Welcome back, <span className="font-semibold text-indigo-600">{profile?.name}</span></p>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowProfile(!showProfile)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <FiUser className="text-lg" />
+              {showProfile ? 'Hide Profile' : 'View Profile'}
+            </button>
             <button
               onClick={() => setShowDeliveryPersonsModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
@@ -838,8 +1089,94 @@ const DeliveryManagerDashboard = () => {
               <FiRefreshCw className="text-lg" />
               Refresh Data
             </button>
+            <button
+              onClick={() => setShowRefundModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              <FiDollarSign className="text-lg" />
+              View Refund Requests
+            </button>
           </div>
         </div>
+
+        {/* Profile Section */}
+        {showProfile && profile && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Profile Information</h2>
+              <button
+                onClick={() => setShowProfile(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiUser className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Full Name</p>
+                  <p className="font-medium text-gray-900">{profile.name}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiMail className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="font-medium text-gray-900">{profile.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiPhone className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Phone Number</p>
+                  <p className="font-medium text-gray-900">{profile.phoneNumber}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiMap className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Assigned Area</p>
+                  <p className="font-medium text-gray-900">{profile.assignedArea}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiCalendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Joined Date</p>
+                  <p className="font-medium text-gray-900">
+                    {new Date(profile.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="font-medium text-gray-900">
+                    {profile.isActive ? (
+                      <span className="text-green-600">Active</span>
+                    ) : (
+                      <span className="text-red-600">Inactive</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -927,7 +1264,7 @@ const DeliveryManagerDashboard = () => {
             <div className="overflow-x-auto max-h-[500px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               <table className="min-w-full divide-y divide-gray-200 table-fixed">
                 <thead className="bg-gray-50 sticky top-0 z-[2] shadow-sm">
-                  <tr>
+                <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Order ID</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Customer</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Address</th>
@@ -935,89 +1272,89 @@ const DeliveryManagerDashboard = () => {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Delivery Person</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Total</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredOrders.map((order) => (
-                    <tr key={order._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order._id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {order.customerName}<br/>
-                        <span className="text-gray-500">{order.customerEmail}</span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{order.shippingAddress}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.deliveryStatus)}`}>
-                          {(order.deliveryStatus || 'processing').charAt(0).toUpperCase() + (order.deliveryStatus || 'processing').slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <select 
-                          value={order.deliveryPerson?._id || ''}
-                          onChange={(e) => handleAssignDeliveryPerson(order._id, e.target.value)}
-                          className="block w-full p-2 rounded-md border-gray-300 text-gray-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                        >
-                          <option value="">Select Delivery Person</option>
-                          {deliveryPersons.map((person) => (
-                            <option key={person._id} value={person._id}>
-                              {person.name}
-                            </option>
-                          ))}
-                        </select>
-                        {order.deliveryPerson && (
-                          <div className="mt-1 text-sm text-gray-500">
-                            Assigned: {order.deliveryPerson.name}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        Rs.{order.totalPrice.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => {
-                              setSelectedOrder(order);
-                              setShowStatusModal(true);
-                            }}
-                            className="text-yellow-600 hover:text-yellow-900"
-                            title="Update Status"
-                          >
-                            <FiRefreshCw className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedOrder(order);
-                              setShowDetailsModal(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Order Details"
-                          >
-                            <FiClipboard className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (!order._id) {
-                                  toast.error('Invalid order ID');
-                                  return;
-                              }
-                              fetchDeliveryDetails(order._id);
-                            }}
-                            className="text-green-600 hover:text-green-900"
-                            title="View Delivery Details"
-                            disabled={!order._id}
-                          >
-                            <FiInfo className="w-5 h-5" />
-                          </button>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredOrders.map((order) => (
+                  <tr key={order._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order._id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {order.customerName}<br/>
+                      <span className="text-gray-500">{order.customerEmail}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{order.shippingAddress}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.deliveryStatus)}`}>
+                        {(order.deliveryStatus || 'processing').charAt(0).toUpperCase() + (order.deliveryStatus || 'processing').slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <select 
+                        value={order.deliveryPerson?._id || ''}
+                        onChange={(e) => handleAssignDeliveryPerson(order._id, e.target.value)}
+                        className="block w-full p-2 rounded-md border-gray-300 text-gray-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                      >
+                        <option value="">Select Delivery Person</option>
+                        {deliveryPersons.map((person) => (
+                          <option key={person._id} value={person._id}>
+                            {person.name}
+                          </option>
+                        ))}
+                      </select>
+                      {order.deliveryPerson && (
+                        <div className="mt-1 text-sm text-gray-500">
+                          Assigned: {order.deliveryPerson.name}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      Rs.{order.totalPrice.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowStatusModal(true);
+                          }}
+                          className="text-yellow-600 hover:text-yellow-900"
+                          title="Update Status"
+                        >
+                          <FiRefreshCw className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowDetailsModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="View Order Details"
+                        >
+                          <FiClipboard className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!order._id) {
+                                toast.error('Invalid order ID');
+                                return;
+                            }
+                            fetchDeliveryDetails(order._id);
+                          }}
+                          className="text-green-600 hover:text-green-900"
+                          title="View Delivery Details"
+                          disabled={!order._id}
+                        >
+                          <FiInfo className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
         {/* Delivery Details History Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden mt-10">
@@ -1238,6 +1575,133 @@ const DeliveryManagerDashboard = () => {
 
       {/* Add the delivery details modal */}
       {showDeliveryDetails && <DeliveryDetailsModal />}
+
+      {/* Refund Requests Modal */}
+      {showRefundModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[9999] backdrop-blur-sm">
+          <div className="relative bg-white p-8 rounded-lg shadow-xl max-w-5xl min-w-[350px] w-full m-4 z-[10000]" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><FiDollarSign className="text-red-500" /> Refund Requests</h2>
+                <p className="text-sm text-gray-500 mt-1">Manage customer refund requests</p>
+              </div>
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {loading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : refundRequests.length === 0 ? (
+              <div className="text-center py-8">
+                <FiPackage className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No Refund Requests</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  There are no refund requests at the moment.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                        <span className="inline-flex items-center gap-1"><FiClipboard className="inline mr-1" />Order #</span>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                        <span className="inline-flex items-center gap-1"><FiInfo className="inline mr-1" />Reason</span>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
+                        <span className="inline-flex items-center gap-1"><FiInfo className="inline mr-1" />Description</span>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                        <span className="inline-flex items-center gap-1"><FiInfo className="inline mr-1" />Status</span>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[220px]">
+                        <span className="inline-flex items-center gap-1"><FiMail className="inline mr-1" />Contact</span>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                        <span className="inline-flex items-center gap-1"><FiPackage className="inline mr-1" />Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {refundRequests.map((refund) => {
+                      // Fallback for order number
+                      let orderNumber = refund.orderNumber;
+                      if (!orderNumber) {
+                        if (typeof refund.orderId === 'object' && refund.orderId._id) {
+                          orderNumber = refund.orderId._id.substring(0, 8).toUpperCase();
+                        } else if (typeof refund.orderId === 'string') {
+                          orderNumber = refund.orderId.substring(0, 8).toUpperCase();
+                        } else {
+                          orderNumber = 'N/A';
+                        }
+                      }
+                      return (
+                        <tr key={refund._id} className="hover:bg-gray-100 transition-colors" style={{ minHeight: '56px', height: '56px' }}>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[120px] font-semibold">
+                            <span title={typeof refund.orderId === 'object' ? refund.orderId._id || refund.orderId : refund.orderId} className="cursor-help underline decoration-dotted">
+                              {orderNumber}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[140px]">{refund.reason}</td>
+                          <td className="px-4 py-4 text-sm text-gray-900 min-w-[200px] max-w-[250px] truncate" title={refund.description}>{refund.description.length > 40 ? refund.description.slice(0, 40) + '...' : refund.description}</td>
+                          <td className="px-4 py-4 whitespace-nowrap min-w-[100px]">
+                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              refund.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              refund.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {refund.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-normal break-words text-sm text-gray-900 min-w-[220px] max-w-[300px]">
+                            <span className="inline-flex items-center gap-1">
+                              {refund.contactPreference === 'email' ? <FiMail className="text-blue-500 mr-1" /> : <FiPhone className="text-green-500 mr-1" />}
+                              <span className="font-semibold capitalize mr-1">{refund.contactPreference}:</span>
+                              {refund.contactPreference === 'email' ? (
+                                <a href={`mailto:${refund.contactDetails}`} className="text-blue-700 underline break-all">{refund.contactDetails}</a>
+                              ) : (
+                                <a href={`tel:${refund.contactDetails}`} className="text-green-700 underline break-all">{refund.contactDetails}</a>
+                              )}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium min-w-[100px]">
+                            <button
+                              onClick={() => {
+                                setSelectedRefund(refund);
+                                setShowRefundDetailsModal(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-900 underline"
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showRefundDetailsModal && <RefundDetailsModal />}
+
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-out">
+          {successMessage}
+        </div>
+      )}
     </div>
   );
 };

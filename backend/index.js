@@ -22,6 +22,7 @@ import LeaveRoutes from "./routes/LeaveRoutes.js";
 import EmployeeRoutes from "./routes/EmployeeRoutes.js";
 import deliveryManagerRoute from "./routes/deliveryManagerRoute.js";
 import deliveryRoutes from "./routes/deliveryRoutes.js";
+import refundRoutes from "./routes/refundRoutes.js";
 
 // import router from "./routes/authRouter.js";
 
@@ -60,6 +61,7 @@ app.use("/api/employees",EmployeeRoutes);
 
 
 app.use("/api/orders", OrderRoute);
+app.use("/api/refunds", refundRoutes);
 
 app.listen(PORT,()=>{
     connectDB()

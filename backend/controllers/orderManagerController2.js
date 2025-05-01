@@ -53,12 +53,14 @@ export async function displayOrders(req,res) {
 
   try {
     const { userId } = req.params; 
+    console.log('Fetching orders for userId:', userId);
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    const orders = await Orders.find({ userId });
+    // Ensure userId is a string for comparison
+    const orders = await Orders.find({ userId: userId.toString() });
 
     if (!orders || orders.length === 0) {
       return res.status(404).json({ message: "No orders found for this user" });
