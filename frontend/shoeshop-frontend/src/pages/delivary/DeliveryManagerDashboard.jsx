@@ -17,7 +17,8 @@ import {
   FiCreditCard,
   FiDollarSign,
   FiInfo,
-  FiTrash2
+  FiTrash2,
+  FiUser
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -50,6 +51,8 @@ const DeliveryManagerDashboard = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deliveryDetails, setDeliveryDetails] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [profile, setProfile] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('deliveryManagerToken');
@@ -61,7 +64,7 @@ const DeliveryManagerDashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        await Promise.all([fetchOrders(), fetchDeliveryPersons()]);
+        await Promise.all([fetchOrders(), fetchDeliveryPersons(), fetchProfile()]);
         fetchAllDeliveryDetails();
         setLoading(false);
       } catch (error) {
@@ -654,37 +657,37 @@ const DeliveryManagerDashboard = () => {
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <FiDollarSign className="text-blue-500 w-5 h-5" />
-                  <div>
-                    <p className="text-sm text-gray-500">Delivery Cost</p>
+                <div>
+                  <p className="text-sm text-gray-500">Delivery Cost</p>
                     <p className="font-medium text-gray-900">Rs. {selectedDeliveryDetails.deliveryCost}</p>
-                  </div>
                 </div>
               </div>
+              </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <FiTruck className="text-blue-500 w-5 h-5" />
-                  <div>
-                    <p className="text-sm text-gray-500">Mileage</p>
+                <div>
+                  <p className="text-sm text-gray-500">Mileage</p>
                     <p className="font-medium text-gray-900">{selectedDeliveryDetails.mileage} km</p>
-                  </div>
                 </div>
               </div>
+              </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <FiDroplet className="text-blue-500 w-5 h-5" />
-                  <div>
-                    <p className="text-sm text-gray-500">Petrol Cost</p>
+                <div>
+                  <p className="text-sm text-gray-500">Petrol Cost</p>
                     <p className="font-medium text-gray-900">Rs. {selectedDeliveryDetails.petrolCost}</p>
-                  </div>
                 </div>
               </div>
+              </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <FiClock className="text-blue-500 w-5 h-5" />
-                  <div>
-                    <p className="text-sm text-gray-500">Time Spent</p>
+                <div>
+                  <p className="text-sm text-gray-500">Time Spent</p>
                     <p className="font-medium text-gray-900">{selectedDeliveryDetails.timeSpent} hours</p>
                   </div>
                 </div>
@@ -806,6 +809,28 @@ const DeliveryManagerDashboard = () => {
     doc.save('delivery-details-report.pdf');
   };
 
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      const response = await axios.get('http://localhost:5000/api/delivery-manager/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data) {
+        setProfile(response.data);
+        console.log('Profile data:', response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('deliveryManagerToken');
+        navigate('/delivery-login');
+      } else {
+        toast.error('Failed to fetch profile');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex justify-center items-center">
@@ -816,14 +841,21 @@ const DeliveryManagerDashboard = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
-      <Header userName="Manager" onLogout={handleLogout} />
+      <Header userName={profile?.name || "Manager"} onLogout={handleLogout} />
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Delivery Management</h1>
-            <p className="mt-2 text-gray-600">Manage orders and delivery status</p>
+            <p className="mt-2 text-gray-600">Welcome back, <span className="font-semibold text-indigo-600">{profile?.name}</span></p>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowProfile(!showProfile)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <FiUser className="text-lg" />
+              {showProfile ? 'Hide Profile' : 'View Profile'}
+            </button>
             <button
               onClick={() => setShowDeliveryPersonsModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
@@ -840,6 +872,85 @@ const DeliveryManagerDashboard = () => {
             </button>
           </div>
         </div>
+
+        {/* Profile Section */}
+        {showProfile && profile && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Profile Information</h2>
+              <button
+                onClick={() => setShowProfile(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiUser className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Full Name</p>
+                  <p className="font-medium text-gray-900">{profile.name}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiMail className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="font-medium text-gray-900">{profile.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiPhone className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Phone Number</p>
+                  <p className="font-medium text-gray-900">{profile.phoneNumber}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiMap className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Assigned Area</p>
+                  <p className="font-medium text-gray-900">{profile.assignedArea}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiCalendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Joined Date</p>
+                  <p className="font-medium text-gray-900">
+                    {new Date(profile.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FiCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="font-medium text-gray-900">
+                    {profile.isActive ? (
+                      <span className="text-green-600">Active</span>
+                    ) : (
+                      <span className="text-red-600">Inactive</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -927,7 +1038,7 @@ const DeliveryManagerDashboard = () => {
             <div className="overflow-x-auto max-h-[500px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               <table className="min-w-full divide-y divide-gray-200 table-fixed">
                 <thead className="bg-gray-50 sticky top-0 z-[2] shadow-sm">
-                  <tr>
+                <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Order ID</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Customer</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Address</th>
@@ -935,89 +1046,89 @@ const DeliveryManagerDashboard = () => {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Delivery Person</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Total</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredOrders.map((order) => (
-                    <tr key={order._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order._id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {order.customerName}<br/>
-                        <span className="text-gray-500">{order.customerEmail}</span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{order.shippingAddress}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.deliveryStatus)}`}>
-                          {(order.deliveryStatus || 'processing').charAt(0).toUpperCase() + (order.deliveryStatus || 'processing').slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <select 
-                          value={order.deliveryPerson?._id || ''}
-                          onChange={(e) => handleAssignDeliveryPerson(order._id, e.target.value)}
-                          className="block w-full p-2 rounded-md border-gray-300 text-gray-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                        >
-                          <option value="">Select Delivery Person</option>
-                          {deliveryPersons.map((person) => (
-                            <option key={person._id} value={person._id}>
-                              {person.name}
-                            </option>
-                          ))}
-                        </select>
-                        {order.deliveryPerson && (
-                          <div className="mt-1 text-sm text-gray-500">
-                            Assigned: {order.deliveryPerson.name}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        Rs.{order.totalPrice.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => {
-                              setSelectedOrder(order);
-                              setShowStatusModal(true);
-                            }}
-                            className="text-yellow-600 hover:text-yellow-900"
-                            title="Update Status"
-                          >
-                            <FiRefreshCw className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedOrder(order);
-                              setShowDetailsModal(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Order Details"
-                          >
-                            <FiClipboard className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (!order._id) {
-                                  toast.error('Invalid order ID');
-                                  return;
-                              }
-                              fetchDeliveryDetails(order._id);
-                            }}
-                            className="text-green-600 hover:text-green-900"
-                            title="View Delivery Details"
-                            disabled={!order._id}
-                          >
-                            <FiInfo className="w-5 h-5" />
-                          </button>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredOrders.map((order) => (
+                  <tr key={order._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order._id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {order.customerName}<br/>
+                      <span className="text-gray-500">{order.customerEmail}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{order.shippingAddress}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.deliveryStatus)}`}>
+                        {(order.deliveryStatus || 'processing').charAt(0).toUpperCase() + (order.deliveryStatus || 'processing').slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <select 
+                        value={order.deliveryPerson?._id || ''}
+                        onChange={(e) => handleAssignDeliveryPerson(order._id, e.target.value)}
+                        className="block w-full p-2 rounded-md border-gray-300 text-gray-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                      >
+                        <option value="">Select Delivery Person</option>
+                        {deliveryPersons.map((person) => (
+                          <option key={person._id} value={person._id}>
+                            {person.name}
+                          </option>
+                        ))}
+                      </select>
+                      {order.deliveryPerson && (
+                        <div className="mt-1 text-sm text-gray-500">
+                          Assigned: {order.deliveryPerson.name}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      Rs.{order.totalPrice.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowStatusModal(true);
+                          }}
+                          className="text-yellow-600 hover:text-yellow-900"
+                          title="Update Status"
+                        >
+                          <FiRefreshCw className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowDetailsModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="View Order Details"
+                        >
+                          <FiClipboard className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!order._id) {
+                                toast.error('Invalid order ID');
+                                return;
+                            }
+                            fetchDeliveryDetails(order._id);
+                          }}
+                          className="text-green-600 hover:text-green-900"
+                          title="View Delivery Details"
+                          disabled={!order._id}
+                        >
+                          <FiInfo className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
         {/* Delivery Details History Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden mt-10">

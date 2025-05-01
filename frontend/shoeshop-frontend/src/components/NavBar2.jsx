@@ -1,27 +1,34 @@
 import React, { useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FiSearch,FiUser,FiShoppingCart,FiMenu,FiArrowLeft, FiTruck } from "react-icons/fi";
+import { FiSearch, FiUser, FiShoppingCart, FiMenu, FiArrowLeft, FiTruck, FiX } from "react-icons/fi";
 import { Link } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from "react-router-dom";
 
 const NavBar2 = () => {
-    const [visible,setVisible]=useState(false);
+    const [visible, setVisible] = useState(false);
     const [showDeliveryDropdown, setShowDeliveryDropdown] = useState(false);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
 
     const {getCartCount} = useContext(ShopContext);
 
     const { isAuthenticated, logout } = useAuthStore();
     const navigate = useNavigate();
 
-    const handleLogout = ()=>{
-      logout()
+    const handleLogout = () => {
+      logout();
+      setShowProfileMenu(false);
       navigate("/customerlogin");
     }
 
-    const navigateorders =()=>{
+    const navigateorders = () => {
+      setShowProfileMenu(false);
       navigate("/orders");
+    }
+
+    const toggleProfileMenu = () => {
+      setShowProfileMenu(!showProfileMenu);
     }
     
     return (
@@ -104,16 +111,35 @@ const NavBar2 = () => {
                 </div>
               </>
             ) : (
-              <div className='group relative'>
-                <FiUser className="w-5 cursor-pointer"/>
-                <div className='group-hover:block hidden absolute dropdown-menu right-0 pt-4'>
-                  <div className='flex flex-col gap-2 w-36 py-3 px-5 bg-slate-100 text-gray-500 rounded'>
-                    <Link to="/customerdashboard"><p className='cursor-pointer hover:text-black'>My Profile</p></Link>
-                    <p className='cursor-pointer hover:text-black' onClick={navigateorders}>Orders</p>
-                    <p className='cursor-pointer hover:text-black'>WishList</p>
-                    <p onClick={handleLogout} className='cursor-pointer hover:text-black'>Logout</p>
+              <div className='relative'>
+                <FiUser className="w-5 cursor-pointer" onClick={toggleProfileMenu}/>
+                {showProfileMenu && (
+                  <div className='absolute dropdown-menu right-0 pt-4'>
+                    <div className='flex flex-col gap-2 w-48 py-3 px-5 bg-slate-100 text-gray-500 rounded shadow-lg'>
+                      <div className="flex justify-between items-center border-b border-gray-200 pb-2 mb-1">
+                        <span className="font-medium text-gray-800">Menu</span>
+                        <button 
+                          onClick={() => setShowProfileMenu(false)}
+                          className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                        >
+                          <FiX className="w-4 h-4 text-gray-600" />
+                        </button>
+                      </div>
+                      <Link to="/customerdashboard" onClick={() => setShowProfileMenu(false)}>
+                        <p className='cursor-pointer hover:text-black hover:bg-gray-200 px-2 py-1 rounded transition-colors'>My Profile</p>
+                      </Link>
+                      <p className='cursor-pointer hover:text-black hover:bg-gray-200 px-2 py-1 rounded transition-colors' onClick={navigateorders}>Orders</p>
+                      <Link to="/delivery-service-review" onClick={() => setShowProfileMenu(false)}>
+                        <p className='cursor-pointer hover:text-black hover:bg-gray-200 px-2 py-1 rounded transition-colors'>Rating</p>
+                      </Link>
+                      <Link to="/refund-orders" onClick={() => setShowProfileMenu(false)}>
+                        <p className='cursor-pointer hover:text-black hover:bg-gray-200 px-2 py-1 rounded transition-colors'>Refund</p>
+                      </Link>
+                      <p className='cursor-pointer hover:text-black hover:bg-gray-200 px-2 py-1 rounded transition-colors'>WishList</p>
+                      <p onClick={handleLogout} className='cursor-pointer hover:text-black hover:bg-gray-200 px-2 py-1 rounded transition-colors text-red-500 hover:text-red-600'>Logout</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
