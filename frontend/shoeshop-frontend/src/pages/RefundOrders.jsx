@@ -12,6 +12,7 @@ const RefundOrders = () => {
   const [loading, setLoading] = useState(true);
   const [refundForm, setRefundForm] = useState({
     orderId: '',
+    orderNumber: '',
     reason: '',
     description: '',
     images: [],
@@ -55,8 +56,16 @@ const RefundOrders = () => {
       console.log('Orders response:', response.data);
 
       if (response.data && Array.isArray(response.data)) {
-        setOrders(response.data);
-        if (response.data.length === 0) {
+        const transformedOrders = response.data.map(order => ({
+          ...order,
+          orderNumber: order._id.substring(0, 8).toUpperCase(),
+          status: order.deliveryStatus || 'processing',
+          createdAt: order.orderDate || order.createdAt,
+          totalAmount: parseFloat(order.totalAmount) || 0
+        }));
+        
+        setOrders(transformedOrders);
+        if (transformedOrders.length === 0) {
           toast('No orders found yet', { icon: 'ℹ️' });
         }
       } else {
@@ -117,6 +126,7 @@ const RefundOrders = () => {
       
       setRefundForm({
         orderId: '',
+        orderNumber: '',
         reason: '',
         description: '',
         images: [],
@@ -207,13 +217,20 @@ const RefundOrders = () => {
                 <select
                   required
                   value={refundForm.orderId}
-                  onChange={(e) => setRefundForm(prev => ({ ...prev, orderId: e.target.value }))}
+                  onChange={(e) => {
+                    const selectedOrder = orders.find(order => order._id === e.target.value);
+                    setRefundForm(prev => ({
+                      ...prev,
+                      orderId: e.target.value,
+                      orderNumber: selectedOrder ? selectedOrder.orderNumber : ''
+                    }));
+                  }}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="">Choose an order</option>
                   {orders.map((order) => (
                     <option key={order._id} value={order._id}>
-                      Order #{order.orderNumber} - ${order.totalAmount}
+                      Order #{order.orderNumber} - LKR {order.totalAmount.toFixed(2)} - {order.status}
                     </option>
                   ))}
                 </select>
@@ -366,13 +383,15 @@ const RefundOrders = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            order.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
+                            order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
                           }`}>
                             {order.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          ${order.totalAmount.toFixed(2)}
+                          LKR {order.totalAmount.toFixed(2)}
                         </td>
                       </tr>
                     ))}
