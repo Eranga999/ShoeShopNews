@@ -937,6 +937,18 @@ const DeliveryManagerDashboard = () => {
   const RefundDetailsModal = () => {
     if (!selectedRefund) return null;
 
+    // Fallback for order number
+    let orderNumber = selectedRefund.orderNumber;
+    if (!orderNumber) {
+      if (typeof selectedRefund.orderId === 'object' && selectedRefund.orderId._id) {
+        orderNumber = selectedRefund.orderId._id.substring(0, 8).toUpperCase();
+      } else if (typeof selectedRefund.orderId === 'string') {
+        orderNumber = selectedRefund.orderId.substring(0, 8).toUpperCase();
+      } else {
+        orderNumber = 'N/A';
+      }
+    }
+
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[9999] backdrop-blur-sm">
         <div className="relative bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full m-4 z-[10000]">
@@ -954,7 +966,7 @@ const DeliveryManagerDashboard = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500">Order Number</p>
-                <p className="font-medium text-gray-900">#{selectedRefund.orderNumber}</p>
+                <p className="font-medium text-gray-900">#{orderNumber}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Status</p>
