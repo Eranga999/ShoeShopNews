@@ -18,7 +18,8 @@ import {
   FiDollarSign,
   FiInfo,
   FiTrash2,
-  FiUser
+  FiUser,
+  FiHash
 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -1566,10 +1567,10 @@ const DeliveryManagerDashboard = () => {
       {/* Refund Requests Modal */}
       {showRefundModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[9999] backdrop-blur-sm">
-          <div className="relative bg-white p-8 rounded-lg shadow-xl max-w-4xl w-full m-4 z-[10000]">
+          <div className="relative bg-white p-8 rounded-lg shadow-xl max-w-5xl min-w-[350px] w-full m-4 z-[10000]" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Refund Requests</h2>
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><FiDollarSign className="text-red-500" /> Refund Requests</h2>
                 <p className="text-sm text-gray-500 mt-1">Manage customer refund requests</p>
               </div>
               <button
@@ -1597,50 +1598,82 @@ const DeliveryManagerDashboard = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">Order ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Order #</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">Reason</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[220px]">Contact</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">Actions</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                        <span className="inline-flex items-center gap-1"><FiClipboard className="inline mr-1" />Order #</span>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                        <span className="inline-flex items-center gap-1"><FiInfo className="inline mr-1" />Reason</span>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
+                        <span className="inline-flex items-center gap-1"><FiInfo className="inline mr-1" />Description</span>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                        <span className="inline-flex items-center gap-1"><FiInfo className="inline mr-1" />Status</span>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[220px]">
+                        <span className="inline-flex items-center gap-1"><FiMail className="inline mr-1" />Contact</span>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                        <span className="inline-flex items-center gap-1"><FiPackage className="inline mr-1" />Actions</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {refundRequests.map((refund) => (
-                      <tr key={refund._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[180px]">{typeof refund.orderId === 'object' ? refund.orderId._id || refund.orderId : refund.orderId}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[120px]">{refund.orderNumber}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[140px]">{refund.reason}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 min-w-[200px] max-w-[250px] truncate" title={refund.description}>{refund.description}</td>
-                        <td className="px-6 py-4 whitespace-nowrap min-w-[100px]">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            refund.status === 'approved' ? 'bg-green-100 text-green-800' :
-                            refund.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {refund.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-normal break-words text-sm text-gray-900 min-w-[220px] max-w-[300px]">
-                          <div><span className="font-semibold capitalize">{refund.contactPreference}:</span></div>
-                          <div>{refund.contactDetails}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium min-w-[100px]">
-                          <div className="flex space-x-2">
+                    {refundRequests.map((refund) => {
+                      // Fallback for order number
+                      let orderNumber = refund.orderNumber;
+                      if (!orderNumber) {
+                        if (typeof refund.orderId === 'object' && refund.orderId._id) {
+                          orderNumber = refund.orderId._id.substring(0, 8).toUpperCase();
+                        } else if (typeof refund.orderId === 'string') {
+                          orderNumber = refund.orderId.substring(0, 8).toUpperCase();
+                        } else {
+                          orderNumber = 'N/A';
+                        }
+                      }
+                      return (
+                        <tr key={refund._id} className="hover:bg-gray-100 transition-colors" style={{ minHeight: '56px', height: '56px' }}>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[120px] font-semibold">
+                            <span title={typeof refund.orderId === 'object' ? refund.orderId._id || refund.orderId : refund.orderId} className="cursor-help underline decoration-dotted">
+                              {orderNumber}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[140px]">{refund.reason}</td>
+                          <td className="px-4 py-4 text-sm text-gray-900 min-w-[200px] max-w-[250px] truncate" title={refund.description}>{refund.description.length > 40 ? refund.description.slice(0, 40) + '...' : refund.description}</td>
+                          <td className="px-4 py-4 whitespace-nowrap min-w-[100px]">
+                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              refund.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              refund.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {refund.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-normal break-words text-sm text-gray-900 min-w-[220px] max-w-[300px]">
+                            <span className="inline-flex items-center gap-1">
+                              {refund.contactPreference === 'email' ? <FiMail className="text-blue-500 mr-1" /> : <FiPhone className="text-green-500 mr-1" />}
+                              <span className="font-semibold capitalize mr-1">{refund.contactPreference}:</span>
+                              {refund.contactPreference === 'email' ? (
+                                <a href={`mailto:${refund.contactDetails}`} className="text-blue-700 underline break-all">{refund.contactDetails}</a>
+                              ) : (
+                                <a href={`tel:${refund.contactDetails}`} className="text-green-700 underline break-all">{refund.contactDetails}</a>
+                              )}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium min-w-[100px]">
                             <button
                               onClick={() => {
                                 setSelectedRefund(refund);
                                 setShowRefundDetailsModal(true);
                               }}
-                              className="text-blue-600 hover:text-blue-900"
+                              className="text-blue-600 hover:text-blue-900 underline"
                             >
                               View Details
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
