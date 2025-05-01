@@ -332,4 +332,40 @@ export const deleteRefundRequest = async (req, res) => {
             error: error.message
         });
     }
+};
+
+// Get all refund requests (for delivery manager)
+export const getAllRefundRequests = async (req, res) => {
+    try {
+        const refunds = await Refund.find()
+            .populate('orderId')
+            .sort({ createdAt: -1 });
+
+        // Transform refunds to match frontend expectations
+        const transformedRefunds = refunds.map(refund => ({
+            _id: refund._id,
+            orderId: refund.orderId?._id || refund.orderId,
+            orderNumber: refund.orderNumber,
+            reason: refund.reason,
+            description: refund.description,
+            images: refund.images,
+            contactPreference: refund.contactPreference,
+            contactDetails: refund.contactDetails,
+            status: refund.status,
+            createdAt: refund.createdAt,
+            userId: refund.userId
+        }));
+
+        res.json({
+            success: true,
+            refunds: transformedRefunds
+        });
+    } catch (error) {
+        console.error('Error fetching all refund requests:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch refund requests",
+            error: error.message
+        });
+    }
 }; 

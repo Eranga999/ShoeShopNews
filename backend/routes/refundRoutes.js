@@ -7,9 +7,11 @@ import {
     getRefundRequest, 
     updateRefundStatus,
     updateRefundRequest,
-    deleteRefundRequest 
+    deleteRefundRequest,
+    getAllRefundRequests
 } from '../controllers/refundController.js';
 import { verifyToken } from '../middleware/verifyToken.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 import fs from 'fs';
 
 const router = express.Router();
@@ -51,10 +53,9 @@ if (!fs.existsSync(uploadDir)) {
 // Routes
 router.post('/order/:orderId/refund-request', verifyToken, upload.array('images', 3), createRefundRequest);
 router.get('/user/:userId/refunds', verifyToken, getUserRefundRequests);
+router.get('/all', authMiddleware, getAllRefundRequests);
 router.get('/:refundId', verifyToken, getRefundRequest);
-router.put('/:refundId/status', verifyToken, updateRefundStatus);
-
-// Add new routes for update and delete
+router.put('/:refundId/status', authMiddleware, updateRefundStatus);
 router.put('/:refundId', verifyToken, upload.array('images', 3), updateRefundRequest);
 router.delete('/:refundId', verifyToken, deleteRefundRequest);
 

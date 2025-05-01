@@ -28,6 +28,27 @@ import autoTable from 'jspdf-autotable';
 import Header from './Header';
 import Footer from './Footer';
 
+// Add animation styles
+const styles = `
+  @keyframes fade-in-out {
+    0% { opacity: 0; transform: translateY(-1rem); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-1rem); }
+  }
+  .animate-fade-in-out {
+    animation: fade-in-out 3s ease-in-out forwards;
+  }
+`;
+
+// Add styles to document head
+if (!document.getElementById('dashboard-styles')) {
+  const styleSheet = document.createElement('style');
+  styleSheet.id = 'dashboard-styles';
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
+}
+
 const DeliveryManagerDashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -53,6 +74,12 @@ const DeliveryManagerDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [profile, setProfile] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [refundRequests, setRefundRequests] = useState([]);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [selectedRefund, setSelectedRefund] = useState(null);
+  const [showRefundDetailsModal, setShowRefundDetailsModal] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('deliveryManagerToken');
@@ -64,7 +91,7 @@ const DeliveryManagerDashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        await Promise.all([fetchOrders(), fetchDeliveryPersons(), fetchProfile()]);
+        await Promise.all([fetchOrders(), fetchDeliveryPersons(), fetchProfile(), fetchRefundRequests()]);
         fetchAllDeliveryDetails();
         setLoading(false);
       } catch (error) {
@@ -648,7 +675,7 @@ const DeliveryManagerDashboard = () => {
           <h2 className="text-2xl font-bold text-gray-900">Delivery Details</h2>
           <button
             onClick={() => setShowDeliveryDetails(false)}
-            className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
+            className="text-gray-500 hover:text-gray-700"
           >
             <FiX className="w-6 h-6" />
           </button>
@@ -831,6 +858,185 @@ const DeliveryManagerDashboard = () => {
     }
   };
 
+  const fetchRefundRequests = async () => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      if (!token) {
+        toast.error('Please login to view refund requests');
+        navigate('/delivery-login');
+        return;
+      }
+
+      const response = await axios.get('http://localhost:5000/api/refunds/all', {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.data && response.data.success) {
+        setRefundRequests(response.data.refunds || []);
+        setShowSuccessMessage(true);
+        setSuccessMessage('Refund requests loaded successfully');
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+      } else {
+        console.warn('No refunds found or invalid response format:', response.data);
+        setRefundRequests([]);
+      }
+    } catch (error) {
+      console.error('Error fetching refund requests:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to fetch refund requests';
+      toast.error(errorMessage);
+      
+      if (error.response?.status === 401) {
+        localStorage.removeItem('deliveryManagerToken');
+        navigate('/delivery-login');
+      }
+    }
+  };
+
+  const handleRefundStatus = async (refundId, status) => {
+    try {
+      const token = localStorage.getItem('deliveryManagerToken');
+      if (!token) {
+        toast.error('Please login to update refund status');
+        navigate('/delivery-login');
+        return;
+      }
+
+      const response = await axios.put(
+        `http://localhost:5000/api/refunds/${refundId}/status`,
+        { status },
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        }
+      );
+      
+      if (response.data.success) {
+        toast.success(`Refund request ${status} successfully`);
+        await fetchRefundRequests(); // Refresh the list
+        setShowRefundDetailsModal(false);
+      }
+    } catch (error) {
+      console.error('Error updating refund status:', error);
+      const errorMessage = error.response?.data?.message || `Failed to ${status} refund request`;
+      toast.error(errorMessage);
+      
+      if (error.response?.status === 401) {
+        localStorage.removeItem('deliveryManagerToken');
+        navigate('/delivery-login');
+      }
+    }
+  };
+
+  const RefundDetailsModal = () => {
+    if (!selectedRefund) return null;
+
+    return (
+      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[9999] backdrop-blur-sm">
+        <div className="relative bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full m-4 z-[10000]">
+          <div className="flex justify-between items-start mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Refund Request Details</h2>
+            <button
+              onClick={() => setShowRefundDetailsModal(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <FiX className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Order Number</p>
+                <p className="font-medium text-gray-900">#{selectedRefund.orderNumber}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Status</p>
+                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  selectedRefund.status === 'approved' ? 'bg-green-100 text-green-800' :
+                  selectedRefund.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {selectedRefund.status}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Reason for Refund</p>
+              <p className="font-medium text-gray-900">{selectedRefund.reason}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Description</p>
+              <p className="font-medium text-gray-900">{selectedRefund.description}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Contact Information</p>
+              <p className="font-medium text-gray-900">
+                {selectedRefund.contactPreference}: {selectedRefund.contactDetails}
+              </p>
+            </div>
+
+            {selectedRefund.images && selectedRefund.images.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-500 mb-2">Attached Images</p>
+                <div className="grid grid-cols-3 gap-4">
+                  {selectedRefund.images.map((image, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={`http://localhost:5000/${image}`}
+                        alt={`Refund evidence ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg"
+                      />
+                      <a
+                        href={`http://localhost:5000/${image}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity duration-200 rounded-lg"
+                      >
+                        <span className="text-white text-sm">View Full Size</span>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedRefund.status === 'pending' && (
+              <div className="flex space-x-4 mt-6">
+                <button
+                  onClick={() => {
+                    handleRefundStatus(selectedRefund._id, 'approved');
+                    setShowRefundDetailsModal(false);
+                  }}
+                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700"
+                >
+                  Approve Refund
+                </button>
+                <button
+                  onClick={() => {
+                    handleRefundStatus(selectedRefund._id, 'rejected');
+                    setShowRefundDetailsModal(false);
+                  }}
+                  className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700"
+                >
+                  Reject Refund
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex justify-center items-center">
@@ -869,6 +1075,13 @@ const DeliveryManagerDashboard = () => {
             >
               <FiRefreshCw className="text-lg" />
               Refresh Data
+            </button>
+            <button
+              onClick={() => setShowRefundModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              <FiDollarSign className="text-lg" />
+              View Refund Requests
             </button>
           </div>
         </div>
@@ -1349,6 +1562,106 @@ const DeliveryManagerDashboard = () => {
 
       {/* Add the delivery details modal */}
       {showDeliveryDetails && <DeliveryDetailsModal />}
+
+      {/* Refund Requests Modal */}
+      {showRefundModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[9999] backdrop-blur-sm">
+          <div className="relative bg-white p-8 rounded-lg shadow-xl max-w-4xl w-full m-4 z-[10000]">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Refund Requests</h2>
+                <p className="text-sm text-gray-500 mt-1">Manage customer refund requests</p>
+              </div>
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {loading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : refundRequests.length === 0 ? (
+              <div className="text-center py-8">
+                <FiPackage className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No Refund Requests</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  There are no refund requests at the moment.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {refundRequests.map((refund) => (
+                      <tr key={refund._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {refund.orderNumber}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {refund.reason}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {refund.description.length > 50 
+                            ? `${refund.description.substring(0, 50)}...` 
+                            : refund.description}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            refund.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            refund.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {refund.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {refund.contactPreference}: {refund.contactDetails}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => {
+                                setSelectedRefund(refund);
+                                setShowRefundDetailsModal(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showRefundDetailsModal && <RefundDetailsModal />}
+
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-out">
+          {successMessage}
+        </div>
+      )}
     </div>
   );
 };
