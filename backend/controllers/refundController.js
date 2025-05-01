@@ -39,7 +39,7 @@ export const createRefundRequest = async (req, res) => {
         // Validate order exists and belongs to user
         const order = await Orders.findOne({ 
             _id: orderId,
-            userId: userId.toString() // Always compare as string
+            userId: userId.toString()
         });
 
         if (!order) {
@@ -49,7 +49,7 @@ export const createRefundRequest = async (req, res) => {
             });
         }
 
-        // Check if order is eligible for refund (e.g., not already refunded)
+        // Check if order is eligible for refund
         if (order.status === 'Refunded' || order.paymentStatus !== 'Paid') {
             return res.status(400).json({
                 success: false,
@@ -70,6 +70,7 @@ export const createRefundRequest = async (req, res) => {
         const refundRequest = new Refund({
             orderId,
             userId: userId.toString(),
+            orderNumber: order._id.toString().substring(0, 8).toUpperCase(),
             reason,
             description,
             images,
@@ -94,8 +95,7 @@ export const createRefundRequest = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to create refund request",
-            error: error.message,
-            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            error: error.message
         });
     }
 };
@@ -103,14 +103,41 @@ export const createRefundRequest = async (req, res) => {
 // Get all refund requests for a user
 export const getUserRefundRequests = async (req, res) => {
     try {
-        const { userId } = req.params;
-        const refunds = await Refund.find({ userId })
+        // Get userId from params or from token
+        const userId = req.params.userId || req.userId || req.user?._id || req.user?.userId;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "User not authenticated"
+            });
+        }
+
+        console.log('Fetching refunds for user:', userId);
+
+        const refunds = await Refund.find({ userId: userId.toString() })
             .populate('orderId')
             .sort({ createdAt: -1 });
 
+        console.log('Found refunds:', refunds.length);
+
+        // Transform refunds to match frontend expectations
+        const transformedRefunds = refunds.map(refund => ({
+            _id: refund._id,
+            orderId: refund.orderId?._id || refund.orderId,
+            orderNumber: refund.orderNumber,
+            reason: refund.reason,
+            description: refund.description,
+            images: refund.images,
+            contactPreference: refund.contactPreference,
+            contactDetails: refund.contactDetails,
+            status: refund.status,
+            createdAt: refund.createdAt
+        }));
+
         res.json({
             success: true,
-            refunds
+            refunds: transformedRefunds
         });
     } catch (error) {
         console.error('Error fetching refund requests:', error);
@@ -178,6 +205,130 @@ export const updateRefundStatus = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to update refund status",
+            error: error.message
+        });
+    }
+};
+
+// Update a refund request
+export const updateRefundRequest = async (req, res) => {
+    try {
+        const { refundId } = req.params;
+        const { reason, description, contactPreference, contactDetails } = req.body;
+        
+        // Get userId from token/session
+        const userId = req.userId || req.user?._id || req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "User not authenticated"
+            });
+        }
+
+        // Find the refund request
+        const refund = await Refund.findOne({ _id: refundId, userId: userId.toString() });
+        
+        if (!refund) {
+            return res.status(404).json({
+                success: false,
+                message: "Refund request not found or does not belong to user"
+            });
+        }
+
+        // Only allow updates if status is pending
+        if (refund.status !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot update processed refund request"
+            });
+        }
+
+        // Get new image paths if files were uploaded
+        const images = req.files ? req.files.map(file => file.path.replace(/\\/g, '/')) : undefined;
+
+        // Update the refund request
+        const updates = {
+            reason,
+            description,
+            contactPreference,
+            contactDetails,
+            ...(images && { images }) // Only update images if new files were uploaded
+        };
+
+        const updatedRefund = await Refund.findByIdAndUpdate(
+            refundId,
+            updates,
+            { new: true }
+        ).populate('orderId');
+
+        res.json({
+            success: true,
+            message: "Refund request updated successfully",
+            refund: updatedRefund
+        });
+    } catch (error) {
+        console.error('Error updating refund request:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update refund request",
+            error: error.message
+        });
+    }
+};
+
+// Delete a refund request
+export const deleteRefundRequest = async (req, res) => {
+    try {
+        const { refundId } = req.params;
+        
+        // Get userId from token/session
+        const userId = req.userId || req.user?._id || req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "User not authenticated"
+            });
+        }
+
+        // Find the refund request
+        const refund = await Refund.findOne({ _id: refundId, userId: userId.toString() });
+        
+        if (!refund) {
+            return res.status(404).json({
+                success: false,
+                message: "Refund request not found or does not belong to user"
+            });
+        }
+
+        // Only allow deletion if status is pending
+        if (refund.status !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot delete processed refund request"
+            });
+        }
+
+        // Delete the refund request
+        await Refund.findByIdAndDelete(refundId);
+
+        // Update the associated order if needed
+        if (refund.orderId) {
+            const order = await Orders.findById(refund.orderId);
+            if (order && order.status === 'RefundRequested') {
+                order.status = 'Delivered'; // or whatever the previous status was
+                await order.save();
+            }
+        }
+
+        res.json({
+            success: true,
+            message: "Refund request deleted successfully"
+        });
+    } catch (error) {
+        console.error('Error deleting refund request:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete refund request",
             error: error.message
         });
     }

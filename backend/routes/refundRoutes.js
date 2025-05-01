@@ -1,8 +1,16 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { createRefundRequest, getUserRefundRequests, getRefundRequest, updateRefundStatus } from '../controllers/refundController.js';
+import { 
+    createRefundRequest, 
+    getUserRefundRequests, 
+    getRefundRequest, 
+    updateRefundStatus,
+    updateRefundRequest,
+    deleteRefundRequest 
+} from '../controllers/refundController.js';
 import { verifyToken } from '../middleware/verifyToken.js';
+import fs from 'fs';
 
 const router = express.Router();
 
@@ -34,10 +42,20 @@ const upload = multer({
     }
 });
 
+// Ensure uploads directory exists
+const uploadDir = 'uploads/refunds';
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 // Routes
 router.post('/order/:orderId/refund-request', verifyToken, upload.array('images', 3), createRefundRequest);
 router.get('/user/:userId/refunds', verifyToken, getUserRefundRequests);
-router.get('/refund/:refundId', verifyToken, getRefundRequest);
-router.put('/refund/:refundId/status', verifyToken, updateRefundStatus);
+router.get('/:refundId', verifyToken, getRefundRequest);
+router.put('/:refundId/status', verifyToken, updateRefundStatus);
+
+// Add new routes for update and delete
+router.put('/:refundId', verifyToken, upload.array('images', 3), updateRefundRequest);
+router.delete('/:refundId', verifyToken, deleteRefundRequest);
 
 export default router; 

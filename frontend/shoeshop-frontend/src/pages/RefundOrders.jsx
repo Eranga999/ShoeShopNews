@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { FiPackage, FiDollarSign, FiClock, FiAlertCircle, FiX, FiUpload } from 'react-icons/fi';
+import { FiPackage, FiDollarSign, FiClock, FiAlertCircle, FiX, FiUpload, FiEdit, FiTrash2 } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,7 +9,11 @@ const RefundOrders = () => {
   const { user, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
+  const [refundRequests, setRefundRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingRequest, setEditingRequest] = useState(null);
+  
   const [refundForm, setRefundForm] = useState({
     orderId: '',
     orderNumber: '',
@@ -40,6 +44,7 @@ const RefundOrders = () => {
       return;
     }
     fetchOrders();
+    fetchRefundRequests();
   }, [isAuthenticated, user, navigate]);
 
   const fetchOrders = async () => {
@@ -85,6 +90,43 @@ const RefundOrders = () => {
     }
   };
 
+  const fetchRefundRequests = async () => {
+    try {
+      if (!user || !user._id) {
+        console.error('No user ID available:', user);
+        toast.error('Please login to view refund requests');
+        navigate('/customerlogin');
+        return;
+      }
+
+      console.log('Fetching refund requests for user:', user._id);
+      const response = await axios.get(`http://localhost:5000/api/refunds/user/${user._id}/refunds`, {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('Refund requests response:', response.data);
+      
+      if (response.data && response.data.success) {
+        setRefundRequests(response.data.refunds || []);
+      } else {
+        console.warn('No refunds found or invalid response format:', response.data);
+        setRefundRequests([]);
+      }
+    } catch (error) {
+      console.error('Error fetching refund requests:', error.response || error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch refund requests';
+      toast.error(errorMessage);
+      setRefundRequests([]);
+      
+      // If unauthorized, redirect to login
+      if (error.response?.status === 401) {
+        navigate('/customerlogin');
+      }
+    }
+  };
+
   const handleRefundRequest = async (e) => {
     e.preventDefault();
     if (!isAuthenticated || !user) {
@@ -100,7 +142,6 @@ const RefundOrders = () => {
 
     try {
       const formData = new FormData();
-      formData.append('userId', user._id);
       formData.append('reason', refundForm.reason);
       formData.append('description', refundForm.description);
       formData.append('contactPreference', refundForm.contactPreference);
@@ -110,20 +151,36 @@ const RefundOrders = () => {
         formData.append('images', image);
       });
 
-      const response = await axios.post(
-        `http://localhost:5000/api/refunds/order/${refundForm.orderId}/refund-request`,
-        formData,
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'multipart/form-data'
+      let response;
+      if (isEditing && editingRequest) {
+        // Update existing refund request
+        response = await axios.put(
+          `http://localhost:5000/api/refunds/${editingRequest._id}`,
+          formData,
+          {
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
           }
-        }
-      );
-
-      console.log('Refund response:', response.data);
-      toast.success('Refund request submitted successfully');
+        );
+        toast.success(response.data.message || 'Refund request updated successfully');
+      } else {
+        // Create new refund request
+        response = await axios.post(
+          `http://localhost:5000/api/refunds/order/${refundForm.orderId}/refund-request`,
+          formData,
+          {
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+        toast.success(response.data.message || 'Refund request submitted successfully');
+      }
       
+      // Reset form and refresh data
       setRefundForm({
         orderId: '',
         orderNumber: '',
@@ -133,16 +190,51 @@ const RefundOrders = () => {
         contactPreference: 'email',
         contactDetails: user?.email || ''
       });
+      setIsEditing(false);
+      setEditingRequest(null);
+      fetchRefundRequests();
       
-      fetchOrders();
     } catch (error) {
-      console.error('Error requesting refund:', error);
-      if (error.response?.status === 401) {
-        toast.error('Please login to request a refund');
-        navigate('/customerlogin');
+      console.error('Error with refund request:', error.response || error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to process refund request';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleEdit = (request) => {
+    setIsEditing(true);
+    setEditingRequest(request);
+    setRefundForm({
+      orderId: request.orderId,
+      orderNumber: request.orderNumber,
+      reason: request.reason,
+      description: request.description,
+      images: [],
+      contactPreference: request.contactPreference,
+      contactDetails: request.contactDetails
+    });
+  };
+
+  const handleDelete = async (requestId) => {
+    if (!window.confirm('Are you sure you want to delete this refund request?')) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete(`http://localhost:5000/api/refunds/${requestId}`, {
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.message || 'Refund request deleted successfully');
+        fetchRefundRequests();
       } else {
-        toast.error(error.response?.data?.message || 'Failed to submit refund request');
+        toast.error(response.data.message || 'Failed to delete refund request');
       }
+    } catch (error) {
+      console.error('Error deleting refund request:', error.response || error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete refund request';
+      toast.error(errorMessage);
     }
   };
 
@@ -205,10 +297,12 @@ const RefundOrders = () => {
           <p className="mt-2 text-sm text-gray-500">Logged in as: {user.email}</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8">
           {/* Refund Request Form */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-6">Submit Refund Request</h2>
+            <h2 className="text-xl font-semibold mb-6">
+              {isEditing ? 'Edit Refund Request' : 'Submit Refund Request'}
+            </h2>
             <form onSubmit={handleRefundRequest} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
@@ -336,10 +430,112 @@ const RefundOrders = () => {
                   type="submit"
                   className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200"
                 >
-                  Submit Refund Request
+                  {isEditing ? 'Update Refund Request' : 'Submit Refund Request'}
                 </button>
+                {isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setEditingRequest(null);
+                      setRefundForm({
+                        orderId: '',
+                        orderNumber: '',
+                        reason: '',
+                        description: '',
+                        images: [],
+                        contactPreference: 'email',
+                        contactDetails: user?.email || ''
+                      });
+                    }}
+                    className="w-full mt-2 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
+                  >
+                    Cancel Edit
+                  </button>
+                )}
               </div>
             </form>
+          </div>
+
+          {/* Refund Requests Table */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-6">Your Refund Requests</h2>
+            {refundRequests.length === 0 ? (
+              <div className="text-center py-8">
+                <FiPackage className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No Refund Requests</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  You haven't submitted any refund requests yet.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Order #
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Reason
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {refundRequests.map((request) => (
+                      <tr key={request._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          #{request.orderNumber}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {request.reason}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            request.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {request.status || 'pending'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(request.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleEdit(request)}
+                              className="text-blue-600 hover:text-blue-900"
+                              disabled={request.status === 'approved' || request.status === 'rejected'}
+                            >
+                              <FiEdit className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(request._id)}
+                              className="text-red-600 hover:text-red-900"
+                              disabled={request.status === 'approved'}
+                            >
+                              <FiTrash2 className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Orders Table */}
