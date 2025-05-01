@@ -89,7 +89,6 @@ const RefundOrders = () => {
 
     try {
       const formData = new FormData();
-      formData.append('orderId', refundForm.orderId);
       formData.append('reason', refundForm.reason);
       formData.append('description', refundForm.description);
       formData.append('contactPreference', refundForm.contactPreference);
@@ -100,7 +99,7 @@ const RefundOrders = () => {
       });
 
       const response = await axios.post(
-        `http://localhost:5000/api/order/${refundForm.orderId}/refund-request`,
+        `http://localhost:5000/api/refunds/order/${refundForm.orderId}/refund-request`,
         formData,
         {
           withCredentials: true,
